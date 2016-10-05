@@ -349,32 +349,8 @@ define(
                 return this._playerPlugin;
             },
 
-            _onFinishedBuffering: function() {
-                if (this.getState() !== MediaPlayer.STATE.BUFFERING) {
-                    return;
-                }
-
-                if (this._deferSeekingTo === null) {
-                    if (this._postBufferingState === MediaPlayer.STATE.PAUSED) {
-                        //this._tryPauseWithStateTransition();
-                    } else {
-                        this._toPlaying();
-                    }
-                }
-            },
-
             _onDeviceError: function(message) {
                 this._reportError(message);
-            },
-
-            _onDeviceBuffering: function() {
-                if (this.getState() === MediaPlayer.STATE.PLAYING) {
-                    this._toBuffering();
-                }
-            },
-
-            _onEndOfMedia: function() {
-                this._toComplete();
             },
 
             _stopPlayer: function() {
@@ -382,45 +358,8 @@ define(
                 this._currentTimeKnown = false;
             },
 
-            _onStatus: function() {
-                var state = this.getState();
-                if (state === MediaPlayer.STATE.PLAYING) {
-                    this._emitEvent(MediaPlayer.EVENT.STATUS);
-                }
-            },
-
-            _onMetadata: function() {
-                this._range = {
-                    start: 0,
-                    end: this._playerPlugin.GetDuration() / 1000
-                };
-            },
-
             _onCurrentTime: function(time) {
                 this._currentTime = time.elapsedTime;
-            },
-
-            _deferredSeek: function() {
-                var clampedTime = this._getClampedTimeForPlayFrom(this._deferSeekingTo);
-                var isNearCurrentTime = this._isNearToCurrentTime(clampedTime);
-
-                if (isNearCurrentTime) {
-                    this._toPlaying();
-                    this._deferSeekingTo = null;
-                } else {
-                    var seekResult = this._seekTo(clampedTime);
-                    if (seekResult) {
-                        this._deferSeekingTo = null;
-                    }
-                }
-            },
-
-            _getClampedTimeForPlayFrom: function (seconds) {
-                var clampedTime = this._getClampedTime(seconds);
-                if (clampedTime !== seconds) {
-                    RuntimeContext.getDevice().getLogger().debug('playFrom ' + seconds+ ' clamped to ' + clampedTime + ' - seekable range is { start: ' + this._range.start + ', end: ' + this._range.end + ' }');
-                }
-                return clampedTime;
             },
 
             _wipe: function () {
@@ -433,20 +372,6 @@ define(
                 this._deferSeekingTo = null;
                 this._tryingToPause = false;
                 this._currentTimeKnown = false;
-            },
-
-            _seekTo: function(seconds) {
-                var offset = seconds - this.getCurrentTime();
-                this._jump(offset);
-                this._currentTime = seconds;
-            },
-
-            _jump: function (offsetSeconds) {
-                if (offsetSeconds > 0) {
-                    return this._playerPlugin.JumpForward(offsetSeconds);
-                } else {
-                    return this._playerPlugin.JumpBackward(Math.abs(offsetSeconds));
-                }
             },
 
             _reportError: function(errorMessage) {
