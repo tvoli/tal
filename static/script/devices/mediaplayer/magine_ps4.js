@@ -10,14 +10,99 @@ define(
         'use strict';
         var Player = MediaPlayer.extend({
             init: function () {
-                //this._player = document.getElementById('playerPlugin');
                 try {
                 this._super();
+                var self = this;
                 this._player = new PS4PlayerAPI();
                 this._state = MediaPlayer.STATE.EMPTY;
-                RuntimeContext.getDevice().getLogger().warn('magine_ps4.init()', this._player);
-              } catch (e) {
-                RuntimeContext.getDevice().getLogger().warn("--> WebMAF API error:" + e);
+                // RuntimeContext.getDevice().getLogger().warn('magine_ps4.init()', JSON.stringify(this._player));
+                window.mediaplayer = this;
+                window.accessfunction = function (json) {
+                    var event = new CustomEvent('playerResponses', {detail:json});
+                    window.dispatchEvent(event);
+                    document.getElementById("debug-area").innerHTML += '<br/>' + json;
+                }
+                window.addEventListener('playerResponses', this._onPlayerResponse, false);
+                } catch (e) {
+                    RuntimeContext.getDevice().getLogger().warn("--> WebMAF API error:" + e);
+                }
+            },
+
+            _onPlayerResponse: function (data) {
+              var self = window.mediaplayer;
+              // RuntimeContext.getDevice().getLogger().warn("Response " + data.detail + this);
+              var result = JSON.parse(data.detail);
+              // RuntimeContext.getDevice().getLogger().warn("result: " + result.playerState);
+              switch(result.command) {
+                  case "getAudioTracks":
+                      //update_audio_languages_display(data.audioTracks);
+                      break;
+
+                  case "getSubtitleTracks":
+                      //update_subtitle_languages_display(data.subtitleTracks);
+                      break;
+
+                  case "getPlaybackTime":
+                      self._onCurrentTime(result);
+                      break;
+
+                  case "networkStatusChange":
+                      break;
+
+                  case "contentAvailable":
+                      break;
+
+                  case "playerSubtitle":
+                      break;
+
+                  case "playerStatusChange":
+                      // RuntimeContext.getDevice().getLogger().warn("playerStatusChange: " + result.playerState);
+                      //RuntimeContext.getDevice().getLogger().warn("current state: " + this._state);
+
+                      try {
+                      switch(result.playerState) {
+                          case "notReady":
+                              self._toEmpty();
+                              // RuntimeContext.getDevice().getLogger().warn(" switch notReady: ");
+                              break;
+
+                          case "opening":
+                          case "buffering":
+                              // RuntimeContext.getDevice().getLogger().warn("switch opening|buffering: ");
+                              self._toBuffering();
+                              break;
+
+                          case "playing":
+                          case "DisplayingVideo":
+                              self._toPlaying();
+                              // RuntimeContext.getDevice().getLogger().warn(" switch playing|DisplayingVideo: ");
+                              break;
+
+                          case "stopped":
+                              // RuntimeContext.getDevice().getLogger().warn("switch stopped: ");
+                              self._toStopped();
+                              break;
+
+                          case "paused":
+                              // RuntimeContext.getDevice().getLogger().warn("switch paused: ");
+                              self._toPaused();
+                              break;
+
+                          case "endOfStream":
+                              // RuntimeContext.getDevice().getLogger().warn("switch notReady: ");
+                              self._toComplete();
+                              break;
+
+                          case "unknown":
+                          default:
+                              // RuntimeContext.getDevice().getLogger().warn("switch unknown: ");
+                              self._reportError();
+                              break;
+                      }
+                      break;
+                    } catch (e) {
+                        RuntimeContext.getDevice().getLogger().warn("ERROR:" + e);
+                    }
               }
             },
 
@@ -64,20 +149,16 @@ define(
              * @inheritDoc
              */
             resume : function () {
-                this._postBufferingState = MediaPlayer.STATE.PLAYING;
+                // RuntimeContext.getDevice().getLogger().warn("resume: getState = " + this.getState());
                 switch (this.getState()) {
-                case MediaPlayer.STATE.PLAYING:
-                    break;
+                    case MediaPlayer.STATE.PAUSED:
+                    case MediaPlayer.STATE.STOPPED:
+                        this.playFrom(this.getCurrentTime());
+                        break;
 
-                case MediaPlayer.STATE.BUFFERING:
-                    break;
-
-                case MediaPlayer.STATE.PAUSED:
-                    break;
-
-                default:
-                    this._toError('Cannot resume while in the \'' + this.getState() + '\' state');
-                    break;
+                    default:
+                        this._toError('Cannot resume while in the \'' + this.getState() + '\' state');
+                        break;
                 }
             },
 
@@ -85,48 +166,27 @@ define(
              * @inheritDoc
              */
             playFrom: function (seconds) {
-                this._postBufferingState = MediaPlayer.STATE.PLAYING;
-                var seekingTo = this._range ? this._getClampedTimeForPlayFrom(seconds) : seconds;
-
+                if(!seconds) {
+                  return;
+                }
+                // RuntimeContext.getDevice().getLogger().warn("playFrom: " + this.getState());
                 switch (this.getState()) {
-                case MediaPlayer.STATE.BUFFERING:
-                    this._deferSeekingTo = seekingTo;
-                    break;
+                    case MediaPlayer.STATE.BUFFERING:
+                    case MediaPlayer.STATE.PLAYING:
+                    case MediaPlayer.STATE.COMPLETE:
+                        this.video_API_stop();
+                        this.video_API_setplaytime(seconds);
+                        this.play();
+                        break;
 
-                case MediaPlayer.STATE.PLAYING:
-                    this._toBuffering();
-                    if (!this._currentTimeKnown) {
-                        this._deferSeekingTo = seekingTo;
-                    } else if (this._isNearToCurrentTime(seekingTo)) {
-                        this._toPlaying();
-                    } else {
-                        //this._seekToWithFailureStateTransition(seekingTo);
-                    }
-                    break;
+                    case MediaPlayer.STATE.PAUSED:
+                        this.video_API_setplaytime(seconds);
+                        this.play();
+                        break;
 
-
-                case MediaPlayer.STATE.PAUSED:
-                    this._toBuffering();
-                    if (!this._currentTimeKnown) {
-                        this._deferSeekingTo = seekingTo;
-                    } else if (this._isNearToCurrentTime(seekingTo)) {
-                        this._playerPlugin.Resume();
-                        this._toPlaying();
-                    } else {
-                        //this._seekToWithFailureStateTransition(seekingTo);
-                        this._playerPlugin.Resume();
-                    }
-                    break;
-
-                case MediaPlayer.STATE.COMPLETE:
-                    this._playerPlugin.Stop();
-                    //this._setDisplayFullScreenForVideo();
-                    this._toBuffering();
-                    break;
-
-                default:
-                    this._toError('Cannot playFrom while in the \'' + this.getState() + '\' state');
-                    break;
+                    default:
+                        this._toError('Cannot playFrom while in the \'' + this.getState() + '\' state');
+                        break;
                 }
             },
 
@@ -134,13 +194,13 @@ define(
              * @inheritDoc
              */
             beginPlayback: function() {
-                this._postBufferingState = MediaPlayer.STATE.PLAYING;
                 switch (this.getState()) {
                 case MediaPlayer.STATE.STOPPED:
-                    this._toBuffering();
-                    //this._player.video_API_load(getSource());
-                    this._player.play();
-                    //this._setDisplayFullScreenForVideo();
+                    this.play();
+                    break;
+                case MediaPlayer.STATE.PAUSED:
+                    // RuntimeContext.getDevice().getLogger().warn("beginPlayback:" );
+                    this.resume();
                     break;
 
                 default:
@@ -153,36 +213,41 @@ define(
              * @inheritDoc
              */
             beginPlaybackFrom: function(seconds) {
-                this._postBufferingState = MediaPlayer.STATE.PLAYING;
-                var seekingTo = this._range ? this._getClampedTimeForPlayFrom(seconds) : seconds;
-
                 switch (this.getState()) {
-                case MediaPlayer.STATE.STOPPED:
-                    //this._setDisplayFullScreenForVideo();
-                    this._toBuffering();
-                    break;
+                    case MediaPlayer.STATE.STOPPED:
+                    case MediaPlayer.STATE.COMPLETE:
+                        this.video_API_setplaytime(seconds);
+                        this._player.play();
+                        break;
 
-                default:
-                    this._toError('Cannot beginPlayback while in the \'' + this.getState() + '\' state');
-                    break;
-                }
+                    default:
+                        this._toError('Cannot beginPlayback while in the \'' + this.getState() + '\' state');
+                        break;
+                    }
             },
 
             /**
              * @inheritDoc
              */
             pause: function () {
+                // RuntimeContext.getDevice().getLogger().warn("--> WebMAF API PAUSE " + this._state);
                 this._postBufferingState = MediaPlayer.STATE.PAUSED;
                 switch (this.getState()) {
                 case MediaPlayer.STATE.BUFFERING:
+                    // RuntimeContext.getDevice().getLogger().warn("--> WebMAF API PAUSE MediaPlayer.STATE.BUFFERING");
+                    break;
                 case MediaPlayer.STATE.PAUSED:
+                    // RuntimeContext.getDevice().getLogger().warn("--> WebMAF API PAUSE MediaPlayer.STATE.PAUSED");
                     break;
 
                 case MediaPlayer.STATE.PLAYING:
-                    //this._tryPauseWithStateTransition();
+                    // RuntimeContext.getDevice().getLogger().warn("--> WebMAF API PAUSE MediaPlayer.STATE.PLAYING");
+                    this.video_API_pause();
+                    this.video_API_asynchronous_get_playtime();
                     break;
 
                 default:
+                    RuntimeContext.getDevice().getLogger().warn("'Cannot pause while in the \'' + this.getState() + '\' state'");
                     this._toError('Cannot pause while in the \'' + this.getState() + '\' state');
                     break;
                 }
@@ -247,11 +312,10 @@ define(
              * @inheritDoc
              */
             getCurrentTime: function () {
-                if (this.getState() === MediaPlayer.STATE.STOPPED) {
-                    return undefined;
-                } else {
+                if (this._currentTime) {
                     return this._currentTime;
                 }
+                return undefined;
             },
 
             /**
@@ -332,18 +396,8 @@ define(
                 };
             },
 
-            _onCurrentTime: function(timeInMillis) {
-                this._currentTime = timeInMillis / 1000;
-                this._onStatus();
-                this._currentTimeKnown = true;
-
-                if (this._deferSeekingTo !== null) {
-                    this._deferredSeek();
-                }
-
-                if (this._tryingToPause) {
-                    //this._tryPauseWithStateTransition();
-                }
+            _onCurrentTime: function(time) {
+                this._currentTime = time.elapsedTime;
             },
 
             _deferredSeek: function() {
