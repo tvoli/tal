@@ -15,6 +15,12 @@ define(
                 var self = this;
                 this._player = new PS4PlayerAPI();
                 this._state = MediaPlayer.STATE.EMPTY;
+                this._currentTime = undefined;
+                this._timePoll = undefined;
+                this._pollEnabled = false;
+                this._license = undefined;
+                this._customData = undefined;
+                this._sourceType = undefined;
                 // RuntimeContext.getDevice().getLogger().warn('magine_ps4.init()', JSON.stringify(this._player));
                 window.mediaplayer = this;
                 window.accessfunction = function (json) {
@@ -30,9 +36,9 @@ define(
 
             _onPlayerResponse: function (data) {
               var self = window.mediaplayer;
-              // RuntimeContext.getDevice().getLogger().warn("Response " + data.detail + this);
+              //RuntimeContext.getDevice().getLogger().warn("Response " + data.detail + result.playerState);
               var result = JSON.parse(data.detail);
-              // RuntimeContext.getDevice().getLogger().warn("result: " + result.playerState);
+              //RuntimeContext.getDevice().getLogger().warn("result: " + result.playerState);
               switch(result.command) {
                   case "getAudioTracks":
                       //update_audio_languages_display(data.audioTracks);
@@ -62,8 +68,8 @@ define(
                       try {
                       switch(result.playerState) {
                           case "notReady":
-                              self._toEmpty();
                               // RuntimeContext.getDevice().getLogger().warn(" switch notReady: ");
+                              self._toEmpty();
                               break;
 
                           case "opening":
@@ -79,7 +85,7 @@ define(
                               break;
 
                           case "stopped":
-                              // RuntimeContext.getDevice().getLogger().warn("switch stopped: ");
+                              //RuntimeContext.getDevice().getLogger().warn("switch stopped: ");
                               self._toStopped();
                               break;
 
@@ -114,7 +120,7 @@ define(
                     this._type = mediaType;
                     this._source = url;
                     this._mimeType = mimeType;
-                    //this._toStopped();
+                    this._toStopped();
                 } else {
                     this._toError('Cannot set source unless in the \'' + MediaPlayer.STATE.EMPTY + '\' state');
                 }
@@ -129,16 +135,13 @@ define(
             9= MPEG2 Transport Stream file (can be local or remote)
             */
 
-            setDRMParams: function (url, license, custom_data, sourceType) {
-              this._source = url;
+            /**
+             * @inheritDoc
+             */
+            setDRMParams: function (license, custom_data, sourceType) {
               this._license = license;
               this._customData = custom_data;
               this._sourceType = sourceType;
-              this.video_API_load(this._source,
-                                          this._license,
-                                          this._customData,
-                                          this._sourceType);
-
             },
 
             getDRMParams: function () {
@@ -152,7 +155,7 @@ define(
                 // RuntimeContext.getDevice().getLogger().warn("resume: getState = " + this.getState());
                 switch (this.getState()) {
                     case MediaPlayer.STATE.PAUSED:
-                    case MediaPlayer.STATE.STOPPED:
+                    case MediaPlayer.STATE.BUFFERING:
                         this.playFrom(this.getCurrentTime());
                         break;
 
@@ -169,21 +172,18 @@ define(
                 if(!seconds) {
                   return;
                 }
-                // RuntimeContext.getDevice().getLogger().warn("playFrom: " + this.getState());
+                // RuntimeContext.getDevice().getLogger().warn("playFrom: " + seconds + " " + this.getState());
                 switch (this.getState()) {
                     case MediaPlayer.STATE.BUFFERING:
                     case MediaPlayer.STATE.PLAYING:
-                    case MediaPlayer.STATE.COMPLETE:
-                        this.video_API_stop();
-                        this.video_API_setplaytime(seconds);
-                        this.play();
-                        break;
-
                     case MediaPlayer.STATE.PAUSED:
+                    case MediaPlayer.STATE.COMPLETE:
                         this.video_API_setplaytime(seconds);
-                        this.play();
+                        this.video_API_play();
                         break;
 
+                    case MediaPlayer.STATE.EMPTY:
+                    case MediaPlayer.STATE.STOPPED:
                     default:
                         this._toError('Cannot playFrom while in the \'' + this.getState() + '\' state');
                         break;
@@ -194,30 +194,39 @@ define(
              * @inheritDoc
              */
             beginPlayback: function() {
-                switch (this.getState()) {
-                case MediaPlayer.STATE.STOPPED:
-                    this.play();
-                    break;
-                case MediaPlayer.STATE.PAUSED:
-                    // RuntimeContext.getDevice().getLogger().warn("beginPlayback:" );
-                    this.resume();
-                    break;
+                // RuntimeContext.getDevice().getLogger().warn("beginPlayback:" );
+                try {
+                    switch (this.getState()) {
+                        case MediaPlayer.STATE.STOPPED:
+                            this.video_API_load(this._source,
+                                                this._license,
+                                                this._customData,
+                                                this._sourceType);
+                            this.video_API_play();
+                            break;
 
-                default:
-                    this._toError('Cannot beginPlayback while in the \'' + this.getState() + '\' state');
-                    break;
-                }
+                        default:
+                            this._toError('Cannot beginPlayback while in the \'' + this.getState() + '\' state');
+                            break;
+                    }
+              } catch (e) {
+                  RuntimeContext.getDevice().getLogger().warn();("When tryed to playback got error: " + e);
+              }
             },
 
             /**
              * @inheritDoc
              */
             beginPlaybackFrom: function(seconds) {
+              // RuntimeContext.getDevice().getLogger().warn("playFrom: " + seconds + " " + this.getState());
                 switch (this.getState()) {
                     case MediaPlayer.STATE.STOPPED:
-                    case MediaPlayer.STATE.COMPLETE:
+                        this.video_API_load(this._source,
+                                            this._license,
+                                            this._customData,
+                                            this._sourceType);
                         this.video_API_setplaytime(seconds);
-                        this._player.play();
+                        this.video_API_play();
                         break;
 
                     default:
@@ -243,7 +252,7 @@ define(
                 case MediaPlayer.STATE.PLAYING:
                     // RuntimeContext.getDevice().getLogger().warn("--> WebMAF API PAUSE MediaPlayer.STATE.PLAYING");
                     this.video_API_pause();
-                    this.video_API_asynchronous_get_playtime();
+                    this._toStopGetCurrentTime();
                     break;
 
                 default:
@@ -280,17 +289,14 @@ define(
              */
             reset: function () {
                 switch (this.getState()) {
-                case MediaPlayer.STATE.EMPTY:
-                    break;
+                    case MediaPlayer.STATE.STOPPED:
+                    case MediaPlayer.STATE.ERROR:
+                        this._toEmpty();
+                        break;
 
-                case MediaPlayer.STATE.STOPPED:
-                case MediaPlayer.STATE.ERROR:
-                    this._toEmpty();
-                    break;
-
-                default:
-                    this._toError('Cannot reset while in the \'' + this.getState() + '\' state');
-                    break;
+                    default:
+                        this._toError('Cannot reset while in the \'' + this.getState() + '\' state');
+                        break;
                 }
             },
 
@@ -312,10 +318,7 @@ define(
              * @inheritDoc
              */
             getCurrentTime: function () {
-                if (this._currentTime) {
-                    return this._currentTime;
-                }
-                return undefined;
+                return this._currentTime;
             },
 
             /**
@@ -354,11 +357,13 @@ define(
             },
 
             _stopPlayer: function() {
-                this._playerPlugin.Stop();
+                this.video_API_stop();
                 this._currentTimeKnown = false;
+                this._toStopGetCurrentTime();
             },
 
             _onCurrentTime: function(time) {
+                // RuntimeContext.getDevice().getLogger().warn("_onCurrentTime " + time.elapsedTime);
                 this._currentTime = time.elapsedTime;
             },
 
@@ -375,7 +380,7 @@ define(
             },
 
             _reportError: function(errorMessage) {
-                RuntimeContext.getDevice().getLogger().error(errorMessage);
+                // RuntimeContext.getDevice().getLogger().error(errorMessage);
                 this._emitEvent(MediaPlayer.EVENT.ERROR, {'errorMessage': errorMessage});
             },
 
@@ -384,6 +389,7 @@ define(
                 this._range = undefined;
                 this._state = MediaPlayer.STATE.STOPPED;
                 this._emitEvent(MediaPlayer.EVENT.STOPPED);
+                this._toStopGetCurrentTime();
             },
 
             _toBuffering: function () {
@@ -394,28 +400,55 @@ define(
             _toPlaying: function () {
                 this._state = MediaPlayer.STATE.PLAYING;
                 this._emitEvent(MediaPlayer.EVENT.PLAYING);
+                if (!this._timePoll) {
+                    this._toUpdateCurrentTime();
+                }
             },
 
             _toPaused: function () {
                 this._state = MediaPlayer.STATE.PAUSED;
                 this._emitEvent(MediaPlayer.EVENT.PAUSED);
+                this._toStopGetCurrentTime();
             },
 
             _toComplete: function () {
                 this._state = MediaPlayer.STATE.COMPLETE;
                 this._emitEvent(MediaPlayer.EVENT.COMPLETE);
+                this._toStopGetCurrentTime();
             },
 
             _toEmpty: function () {
-                this._wipe();
                 this._state = MediaPlayer.STATE.EMPTY;
+                this._toStopGetCurrentTime();
             },
 
             _toError: function(errorMessage) {
+                // RuntimeContext.getDevice().getLogger().warn("_toError");
                 this._wipe();
                 this._state = MediaPlayer.STATE.ERROR;
                 this._reportError(errorMessage);
                 throw 'ApiError: ' + errorMessage;
+            },
+
+            _toUpdatePlayTime: function () {
+                // RuntimeContext.getDevice().getLogger().warn("_toUpdatePlayTime");
+                this.video_API_asynchronous_get_playtime();
+            },
+
+            _toUpdateCurrentTime: function () {
+                // RuntimeContext.getDevice().getLogger().warn("_toUpdateCurrentTime");
+                var self = this;
+                try {
+                    this._timePoll = setInterval(function(){ self._toUpdatePlayTime() }, 800);
+                } catch (e) {
+                  RuntimeContext.getDevice().getLogger().warn("_toUpdateCurrentTime error: " + e);
+                }
+            },
+
+            _toStopGetCurrentTime: function () {
+              // RuntimeContext.getDevice().getLogger().warn("_toStopGetCurrentTime");
+              clearInterval(this._timePoll);
+              this._timePoll = undefined;
             },
 
             video_API_stop: function() {
@@ -460,22 +493,8 @@ define(
 
             video_API_set_video_portal: function(left_top_x,left_top_y,right_bottom_x,right_bottom_y) {
               this._player.webmaf_set_audio_track(left_top_x,left_top_y,right_bottom_x,right_bottom_y);
-            },
-
-
-            play: function () {
-                //RuntimeContext.getDevice().getLogger().warn(" webmaf play");
-                //console.log('AVPlayer.play()', "Current state: " + webapis.avplay.getState());
-        				try {
-        					this.video_API_play();
-        					//console.log('AVPlayer.play()', "Current state: " + webapis.avplay.getState());
-        				} catch (e) {
-        					//console.log('AVPlayer.play()', "Current state: " + webapis.avplay.getState());
-        					console.log(e);
-                  //RuntimeContext.getDevice().getLogger().warn(" webmaf play error" + e);
-        				}
             }
-        });
+          });
 
         var instance = new Player();
 
