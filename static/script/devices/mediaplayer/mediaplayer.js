@@ -303,6 +303,16 @@ define(
                 throw new Error('getPlayerElement method has not been implemented');
             },
 
+            /**
+             * Set the license and custom data to be used in DRM system for the media to be played.
+             * @param {String} license string containing the license URI to decode the encrypted video.
+             * @param {String} custom_data string containing the custom data to be passed to the DRM system.
+             */
+
+             setDRMParams: function (/*license, custom_data*/) {
+                  throw new Error('setDRMParams method has not been implemented');
+             },
+
             _getClampOffsetFromConfig: function() {
                 var clampOffsetFromEndOfRange;
                 var config = RuntimeContext.getDevice().getConfig();
