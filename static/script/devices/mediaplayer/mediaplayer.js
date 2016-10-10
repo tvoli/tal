@@ -315,6 +315,25 @@ define(
              },
 
              /**
+              * Get the subtitles available for the current media.
+              * @return {String} subtitleTracks: list of the subtitle tracks identifiers.
+              * @return {String} currentSubtitleTrack: identifier of the subtitle track selected.
+              */
+              getSubtitleTracks: function () {
+                   throw new Error('getSubtitleTrack method has not been implemented');
+              },
+
+              /**
+               * Get the media audio tracks available for the current media.
+               * @return {String} audioTracks: list of the audio tracks identifiers.
+               * @return {String} audioNumChannels: list of the number of audio channels in each of the above tracks
+               * @return {String} currentAudioTrack: identifier of the audio track selected.
+               */
+
+               getAudioTracks: function () {
+                    throw new Error('getAudioTrack method has not been implemented');
+               },
+             /**
               * Set the subtitle for the media.
               * @param {String} subtitleTrack string containing the identifier of the subtitle track selected.
               */
