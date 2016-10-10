@@ -74,7 +74,6 @@ define(
              * @inheritDoc
              */
             playFrom: function (seconds) {
-                console.log("state: ", this.getState());
                 this._postBufferingState = MediaPlayer.STATE.PLAYING;
                 var seekingTo = this.getSeekableRange() ? this._getClampedTimeForPlayFrom(seconds) : seconds;
 
@@ -292,10 +291,10 @@ define(
                     var data = JSON.stringify(custom_data);
                     drmParam.CustomData = btoa(data);
                 }
-
                 try {
                     this._player.setDrm("PLAYREADY", "SetProperties", JSON.stringify(drmParam));
                     this._drmConfigured = true;
+                    this._player.prepare();
                 } catch (e) {
                     console.log("Problem setting DRM params ", e.name)
                 }
@@ -305,7 +304,6 @@ define(
                 this._player.open(this._source);
                 this._player.setListener(this._createListener());
 
-                this._player.prepare();
                 this._player.setDisplayRect(
                     this._playerPlugin.offsetLeft, this._playerPlugin.offsetTop,
                     this._playerPlugin.offsetWidth, this._playerPlugin.offsetHeight
@@ -341,6 +339,9 @@ define(
                         oncurrentplaytime: function(currentTime) {
                             console.log("Current Playtime : " + currentTime);
                             self._onCurrentTime(currentTime);
+                        },
+                        ondrmevent: function(drmEvent, drmData) {
+                            console.log("DRM callback: " + drmEvent + ", data: " + drmData);
                         }
                     };
                 }
