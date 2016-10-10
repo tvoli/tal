@@ -314,6 +314,24 @@ define(
                   throw new Error('setDRMParams method has not been implemented');
              },
 
+             /**
+              * Set the subtitle for the media.
+              * @param {String} subtitleTrack string containing the identifier of the subtitle track selected.
+              */
+
+              setSubtitleTrack: function (/*subtitleTrack*/) {
+                   throw new Error('setSubtitleTrack method has not been implemented');
+              },
+
+              /**
+               * Set the media audio track.
+               * @param {String} audioTrack string containing the identifier of the audio track to play.
+               */
+
+               setAudioTrack: function (/*audioTrack*/) {
+                    throw new Error('setAudioTrack method has not been implemented');
+               },
+
             _getClampOffsetFromConfig: function() {
                 var clampOffsetFromEndOfRange;
                 var config = RuntimeContext.getDevice().getConfig();
