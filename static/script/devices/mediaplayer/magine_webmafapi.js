@@ -56,6 +56,7 @@ define(
 
         webmaf_load: function (url, license, custom_data, sourceType) {
           var play_command='{"command":"load","contentUri":"'+url+'","licenseUri":"'+license+'","customData":"'+custom_data+'","sourceType":'+sourceType+'}';
+          // var play_command='{"command":"load","contentUri":"'+url+'"'+'}';
           this._webmaf_api_entry(play_command);
         },
 
@@ -63,8 +64,11 @@ define(
           this._webmaf_api_entry('{"command":"getPlaybackTime"}',false);
         },
 
-        webmaf_check_audio_and_timedtext_streams: function () {
+        webmaf_get_audio_tracks: function () {
           this._webmaf_api_entry('{"command":"getAudioTracks"}');
+        },
+
+        webmaf_get_subtitle_tracks: function () {
           this._webmaf_api_entry('{"command":"getSubtitleTracks"}');
         },
 

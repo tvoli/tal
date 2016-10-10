@@ -36,16 +36,19 @@ define(
 
             _onPlayerResponse: function (data) {
               var self = window.mediaplayer;
-              //RuntimeContext.getDevice().getLogger().warn("Response " + data.detail + result.playerState);
+              // RuntimeContext.getDevice().getLogger().warn("Response: " + data.detail);
               var result = JSON.parse(data.detail);
-              //RuntimeContext.getDevice().getLogger().warn("result: " + result.playerState);
+              // RuntimeContext.getDevice().getLogger().warn("result: " + result);
               switch(result.command) {
                   case "getAudioTracks":
-                      //update_audio_languages_display(data.audioTracks);
+                      self._toSetAudioDetails(result.audioTracks,
+                                              result.audioNumChannels,
+                                              result.currentAudioTrack);
                       break;
 
                   case "getSubtitleTracks":
-                      //update_subtitle_languages_display(data.subtitleTracks);
+                      self._toSetSubTitleDetais(result.subtitleTracks,
+                                                result.currentSubtitleTrack);
                       break;
 
                   case "getPlaybackTime":
@@ -81,6 +84,7 @@ define(
                           case "playing":
                           case "DisplayingVideo":
                               self._toPlaying();
+                              self._getStreamDetails();
                               // RuntimeContext.getDevice().getLogger().warn(" switch playing|DisplayingVideo: ");
                               break;
 
@@ -352,6 +356,50 @@ define(
                 return this._playerPlugin;
             },
 
+            /**
+             * @inheritDoc
+             */
+            setSubtitleTrack: function (subtitleTrack) {
+                try {
+                    RuntimeContext.getDevice().getLogger().warn("setSubtitleTrack: " + subtitleTrack);
+                    this.video_API_set_subtitle_track(subtitleTrack);
+                } catch (e) {
+                  RuntimeContext.getDevice().getLogger().warn("setSubtitleTrack: error " + e);
+                }
+            },
+
+            /**
+             * @inheritDoc
+             */
+            setAudioTrack: function (audioTrack) {
+                 this.video_API_set_set_audio_track(audioTrack);
+            },
+
+            /**
+             * @inheritDoc
+             */
+            getSubtitleTracks: function () {
+                var subtitlesParams = {
+                    subtitleTracks: this._subtitleTracks,
+                    currentSubtitleTrack: this._currentSubtitleTrack
+                };
+
+                return subtitlesParams;
+             },
+
+            /**
+            * @inheritDoc
+            */
+            getAudioTracks: function () {
+                var audioParams = {
+                    audioTracks: this._audioTracks,
+                    audioNumChannels: this._audioNumChannels,
+                    currentAudioTrack: this._currentAudioTrack
+                };
+
+                return audioParams;
+            },
+
             _onDeviceError: function(message) {
                 this._reportError(message);
             },
@@ -377,6 +425,11 @@ define(
                 this._deferSeekingTo = null;
                 this._tryingToPause = false;
                 this._currentTimeKnown = false;
+                this._subtitleTracks = undefined;
+                this._currentSubtitleTrack = undefined;
+                this._audioTracks = undefined;
+                this._audioNumChannels = undefined;
+                this._currentAudioTrack = undefined;
             },
 
             _reportError: function(errorMessage) {
@@ -435,6 +488,17 @@ define(
                 this.video_API_asynchronous_get_playtime();
             },
 
+            _toSetAudioDetails: function (audioTracks, audioNumChannels, currentAudioTrack) {
+                this._audioTracks = audioTracks;
+                this._audioNumChannels = audioNumChannels;
+                this._currentAudioTrack = currentAudioTrack;
+            },
+
+            _toSetSubTitleDetais: function (subtitleTracks, currentSubtitleTrack) {
+                this._subtitleTracks = subtitleTracks;
+                this._currentSubtitleTrack = currentSubtitleTrack;
+            },
+
             _toUpdateCurrentTime: function () {
                 // RuntimeContext.getDevice().getLogger().warn("_toUpdateCurrentTime");
                 var self = this;
@@ -443,6 +507,11 @@ define(
                 } catch (e) {
                   RuntimeContext.getDevice().getLogger().warn("_toUpdateCurrentTime error: " + e);
                 }
+            },
+
+            _getStreamDetails: function () {
+              this.video_API_get_audio_tracks();
+              this.video_API_get_subtitle_tracks();
             },
 
             _toStopGetCurrentTime: function () {
@@ -475,8 +544,12 @@ define(
               this._player.webmaf_asynchronous_get_playtime();
             },
 
-            video_API_asynchronous_check_audio_and_timedtext_streams: function() {
-              this._player.webmaf_check_audio_and_timedtext_streams();
+            video_API_get_audio_tracks: function() {
+              this._player.webmaf_get_audio_tracks();
+            },
+
+            video_API_get_subtitle_tracks: function() {
+              this._player.webmaf_get_subtitle_tracks();
             },
 
             video_API_set_audio_language: function() {
@@ -484,7 +557,11 @@ define(
             },
 
             video_API_set_subtitle_track: function(track_code) {
-              this._player.webmaf_set_subtitle_track(track_code);
+              try {
+                  this._player.webmaf_set_subtitle_track(track_code);
+              } catch (e) {
+                  RuntimeContext.getDevice().getLogger().warn("video_API_set_subtitle_track error " + e);
+              }
             },
 
             video_API_set_set_audio_track: function(track_code) {
