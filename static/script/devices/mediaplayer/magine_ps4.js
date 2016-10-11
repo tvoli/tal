@@ -26,7 +26,8 @@ define(
                 window.accessfunction = function (json) {
                     var event = new CustomEvent('playerResponses', {detail:json});
                     window.dispatchEvent(event);
-                    document.getElementById("debug-area").innerHTML += '<br/>' + json;
+                    document.getElementById("debug-area").innerHTML = json + '<br/>' +
+                        document.getElementById("debug-area").innerHTML;
                 }
                 window.addEventListener('playerResponses', this._onPlayerResponse, false);
                 } catch (e) {
@@ -62,6 +63,7 @@ define(
                       break;
 
                   case "playerSubtitle":
+                      self._toShowSubtitle(result.textSize, result.text);
                       break;
 
                   case "playerStatusChange":
@@ -518,6 +520,10 @@ define(
               // RuntimeContext.getDevice().getLogger().warn("_toStopGetCurrentTime");
               clearInterval(this._timePoll);
               this._timePoll = undefined;
+            },
+
+            _toShowSubtitle: function (SubtitlesSize, SubtitlesText) {
+              document.getElementById("subtitleArea").innerHTML = SubtitlesText;
             },
 
             video_API_stop: function() {
