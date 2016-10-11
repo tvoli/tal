@@ -300,6 +300,17 @@ define(
                 }
             },
 
+            getSubtitleTracks: function() {
+                // TODO define a format to return
+                var totalTracks = webapis.avplay.getTotalTrackInfo();
+                var currentTracks = webapis.avplay.getCurrentStreamInfo();
+
+                return {
+                    subtitleTracks: totalTracks,
+                    currentSubtitleTrack: currentTracks
+                };
+            },
+
             _prepare: function() {
                 this._player.open(this._source);
                 this._player.setListener(this._createListener());
@@ -342,7 +353,11 @@ define(
                         },
                         ondrmevent: function(drmEvent, drmData) {
                             console.log("DRM callback: " + drmEvent + ", data: " + drmData);
-                        }
+                        },
+                        onsubtitlechange: function(duration, text, type, attriCount, attributes) {
+                            console.log("subtitle changed");
+                    	    document.getElementById("subtitleArea").innerHTML = text;
+                    	}
                     };
                 }
 
