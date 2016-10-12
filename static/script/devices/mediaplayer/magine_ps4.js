@@ -21,7 +21,9 @@ define(
                 this._license = undefined;
                 this._customData = undefined;
                 this._sourceType = undefined;
-                // RuntimeContext.getDevice().getLogger().warn('magine_ps4.init()', JSON.stringify(this._player));
+                this._audioChanged = false;
+                this._audioChangedTime = undefined;
+
                 window.mediaplayer = this;
                 window.accessfunction = function (json) {
                     var event = new CustomEvent('playerResponses', {detail:json});
@@ -84,10 +86,11 @@ define(
                               break;
 
                           case "playing":
-                          case "DisplayingVideo":
                               self._toPlaying();
                               self._getStreamDetails();
                               // RuntimeContext.getDevice().getLogger().warn(" switch playing|DisplayingVideo: ");
+                              break;
+                          case "DisplayingVideo":
                               break;
 
                           case "stopped":
@@ -185,7 +188,6 @@ define(
                     case MediaPlayer.STATE.PAUSED:
                     case MediaPlayer.STATE.COMPLETE:
                         this.video_API_setplaytime(seconds);
-                        this.video_API_play();
                         break;
 
                     case MediaPlayer.STATE.EMPTY:
@@ -232,7 +234,6 @@ define(
                                             this._customData,
                                             this._sourceType);
                         this.video_API_setplaytime(seconds);
-                        this.video_API_play();
                         break;
 
                     default:
@@ -363,7 +364,7 @@ define(
              */
             setSubtitleTrack: function (subtitleTrack) {
                 try {
-                    RuntimeContext.getDevice().getLogger().warn("setSubtitleTrack: " + subtitleTrack);
+                    // RuntimeContext.getDevice().getLogger().warn("setSubtitleTrack: " + subtitleTrack);
                     this.video_API_set_subtitle_track(subtitleTrack);
                 } catch (e) {
                   RuntimeContext.getDevice().getLogger().warn("setSubtitleTrack: error " + e);
@@ -374,7 +375,22 @@ define(
              * @inheritDoc
              */
             setAudioTrack: function (audioTrack) {
-                 this.video_API_set_set_audio_track(audioTrack);
+                switch (this.getState()) {
+                    case MediaPlayer.STATE.STOPPED:
+                        this.video_API_set_audio_track(audioTrack);
+                    break;
+
+                    case MediaPlayer.STATE.BUFFERING:
+                    case MediaPlayer.STATE.PLAYING:
+                    case MediaPlayer.STATE.PAUSED:
+                        var time = this._currentTime;
+                        this._toAudioChanged(time, audioTrack);
+                    break;
+
+                    default:
+                        this._toError('Cannot setAudioTrack while in the \'' + this.getState() + '\' state');
+                    break;
+                }
             },
 
             /**
@@ -458,6 +474,11 @@ define(
                 if (!this._timePoll) {
                     this._toUpdateCurrentTime();
                 }
+                if (this._audioChanged) {
+                    this._audioChanged = false;
+                    this.video_API_setplaytime(this._audioChangedTime);
+                    this._audioChangedTime = undefined
+                }
             },
 
             _toPaused: function () {
@@ -526,6 +547,17 @@ define(
               document.getElementById("subtitleArea").innerHTML = SubtitlesText;
             },
 
+            _toAudioChanged: function (audioTimeChanged, newAudioTrack) {
+              this._audioChanged = true;
+              this._audioChangedTime = audioTimeChanged;
+              this.stop();
+              this.video_API_set_audio_track(newAudioTrack);
+              this.video_API_load(this._source,
+                                  this._license,
+                                  this._customData,
+                                  this._sourceType);
+            },
+
             video_API_stop: function() {
               this._player.webmaf_stop()
             },
@@ -558,10 +590,6 @@ define(
               this._player.webmaf_get_subtitle_tracks();
             },
 
-            video_API_set_audio_language: function() {
-              this._player.webmaf_stop();
-            },
-
             video_API_set_subtitle_track: function(track_code) {
               try {
                   this._player.webmaf_set_subtitle_track(track_code);
@@ -570,8 +598,8 @@ define(
               }
             },
 
-            video_API_set_set_audio_track: function(track_code) {
-              this._player.webmaf_set_audio_track(track_code);
+            video_API_set_audio_track: function(track_code) {
+                this._player.webmaf_set_audio_track(track_code);
             },
 
             video_API_set_video_portal: function(left_top_x,left_top_y,right_bottom_x,right_bottom_y) {
