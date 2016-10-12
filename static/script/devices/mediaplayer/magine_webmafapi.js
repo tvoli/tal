@@ -47,16 +47,31 @@ define(
 
         webmaf_play: function () {
           try {
-            //RuntimeContext.getDevice().getLogger().warn(" webmafapi play");
             this._webmaf_api_entry('{"command":"play"}');
           } catch (e) {
-            //RuntimeContext.getDevice().getLogger().warn(" webmafapi error" + e);
+            RuntimeContext.getDevice().getLogger().warn(" webmafapi error" + e);
           }
         },
 
         webmaf_load: function (url, license, custom_data, sourceType) {
-          var play_command='{"command":"load","contentUri":"'+url+'","licenseUri":"'+license+'","customData":"'+custom_data+'","sourceType":'+sourceType+'}';
-          // var play_command='{"command":"load","contentUri":"'+url+'"'+'}';
+          // var play_command='{"command":"load","contentUri":"'+url+'","licenseUri":"'+license+'","customData":"'+custom_data+'","sourceType":'+sourceType+'}';
+          var play_command = undefined;
+          if (!url) {
+            RuntimeContext.getDevice().getLogger().error("No URL was set.");
+          } else {
+           play_command = '{"command":"load","contentUri":"'+url+'"';
+          }
+          if (license) {
+            play_command += ',"licenseUri":"'+license+'"';
+          }
+          if (custom_data) {
+            play_command += ',"customData":"'+custom_data+'"';
+          }
+          if (sourceType) {
+            play_command += ',"sourceType":'+sourceType+'';
+          }
+          play_command += '}';
+
           this._webmaf_api_entry(play_command);
         },
 
@@ -77,36 +92,8 @@ define(
           this._webmaf_api_entry('{"command":"setSubtitleTrack","subtitleTrack":"'+track_code+'","renderSubtitle":"false"}');
         },
 
-        audio_language_change_workaround: "use_it",
-
         webmaf_set_audio_track: function (track_code){
-          if (this.audio_language_change_workaround=="use_it"){
-            this.webmaf_set_audio_track_with_workaround_for_fastforwarding(track_code);
-          }else{
-            this._webmaf_api_entry('{"command":"setAudioTrack","audioTrack":"'+track_code+'"}');
-          }
-        },
-
-        set_audio_track_workaround_state: "inactive",
-        webmaf_set_audio_track_with_workaround_for_fastforwarding: function (track_code) {
-          var saved_cur_time=this.current_time
-          this.webmaf_stop();
-          set_audio_track_workaround_state="waiting_for_load_to_complete";
-          this._webmaf_api_entry('{"command":"setAudioTrack","audioTrack":"'+track_code+'"}');  // WebMAF will save this irrespective of whether the currely loaded video contains the specififed track
-          this.webmaf_load(video_path_URL+films[film_pos][0], films[film_pos][1], films[film_pos][2]);
-          next_movie_resume_time = films[film_pos][3];
-          tick_time_to_play_next = films[film_pos][4];
-          if (tick_time_to_play_next != 0) {
-            tick_time_to_play_next = tick_time_to_play_next * 10 + my_decisecond_timer;
-          }
-        },
-
-        set_audio_track_workaround_load_complete_check: function () {
-          switch(set_audio_track_workaround_state){
-            case "waiting_for_load_to_complete":
-            this.webmaf_setplaytime(saved_cur_time);
-            break;
-          }
+          this._webmaf_api_entry('{"command":"setAudioTrack","audioTrack":"'+track_code+'"}');
         },
 
         webmaf_set_set_audio_track: function (left_top_x,left_top_y,right_bottom_x,right_bottom_y) {
