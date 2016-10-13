@@ -240,7 +240,7 @@ define(
              * @inheritDoc
              */
             getCurrentTime: function () {
-                return this._sendMessage(Command.GETCURRENTTIME) / 1000;
+                return this._currentTime
             },
 
             /**
@@ -291,6 +291,7 @@ define(
                     var data = JSON.stringify(custom_data);
                     drmParam.CustomData = btoa(data);
                 }
+
                 var params = [ "PLAYREADY", "SetProperties", JSON.stringify(drmParam) ];
 
                 this._sendMessage(Command.SETDRM, params);
@@ -310,8 +311,10 @@ define(
             },
 
             _prepare: function() {
+                var dimensions = RuntimeContext.getDevice().getScreenSize();
+
                 this._sendMessage(Command.OPEN, this._source);
-                this._sendMessage(Command.SETLISTENERS/*,this._createListener()*/);
+                this._sendMessage(Command.SETLISTENERS);
 
                 var params = [ 0, 0, dimensions.width, dimensions.height ];
 
@@ -509,7 +512,7 @@ define(
             },
 
             _sendMessage: function(command, extraParam) {
-                if (typeof extraParam !== "undefined")
+                if (typeof extraParam === "undefined")
                     extraParam = '';
 
                 window.postMessage({
