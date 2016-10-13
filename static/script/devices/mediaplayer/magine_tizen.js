@@ -24,7 +24,6 @@ define(
                 this._tryingToPause = false;
                 this._currentTimeKnown = false;
                 this._drmConfigured = false;
-                this._player = webapis.avplay;
             },
 
             /**
@@ -54,13 +53,13 @@ define(
                 case MediaPlayer.STATE.BUFFERING:
                     if (this._tryingToPause) {
                         this._tryingToPause = false;
-                        this._player.play();
+                        this._sendMessage(Command.PLAY);
                         this._toPlaying();
                     }
                     break;
 
                 case MediaPlayer.STATE.PAUSED:
-                    this._player.play();
+                    this._sendMessage(Command.PLAY);
                     this._toPlaying();
                     break;
 
@@ -99,20 +98,20 @@ define(
                     if (!this._currentTimeKnown) {
                         this._deferSeekingTo = seekingTo;
                     } else if (this._isNearToCurrentTime(seekingTo)) {
-                        this._player.play();
+                        this._sendMessage(Command.PLAY);
                         this._toPlaying();
                     } else {
                         this._seekToPosition(seekingTo);
-                        this._player.play();
+                        this._sendMessage(Command.PLAY);
                         this._toPlaying();
                     }
                     break;
 
                 case MediaPlayer.STATE.COMPLETE:
-                    this._player.stop();
+                    this._sendMessage(Command.STOP);
                     this._setDisplayFullScreenForVideo();
                     this._seekToPosition(seekingTo);
-                    this._player.play();
+                    this._sendMessage(Command.PLAY);
                     this._toPlaying();
                     break;
 
@@ -130,7 +129,7 @@ define(
                 switch (this.getState()) {
                     case MediaPlayer.STATE.STOPPED:
                         this._setDisplayFullScreenForVideo();
-                        this._player.play();
+                        this._sendMessage(Command.PLAY);
                         this._toPlaying();
                         break;
 
@@ -151,7 +150,7 @@ define(
                     case MediaPlayer.STATE.STOPPED:
                         this._setDisplayFullScreenForVideo();
                         this._seekToPosition(seekingTo);
-                        this._player.play();
+                        this._sendMessage(Command.PLAY);
                         break;
 
                     default:
@@ -172,7 +171,7 @@ define(
                         break;
 
                     case MediaPlayer.STATE.PLAYING:
-                        this._player.pause();
+                        this._sendMessage(Command.PAUSE);
                         this._toPaused();
                         break;
 
@@ -241,7 +240,7 @@ define(
              * @inheritDoc
              */
             getCurrentTime: function () {
-                return this._player.getCurrentTime() / 1000;
+                return this._sendMessage(Command.GETCURRENTTIME) / 1000;
             },
 
             /**
@@ -262,7 +261,8 @@ define(
              * @inheritDoc
              */
             _getMediaDuration: function() {
-                return this._player.getDuration() / 1000;
+                //return this._player.getDuration() / 1000;
+                return 0;
             },
 
             /**
@@ -276,7 +276,7 @@ define(
              * @inheritDoc
              */
             getPlayerElement: function() {
-                return this._player;
+                return this._playerPlugin;
             },
 
             setDRMParams: function(license_url, custom_data) {
@@ -291,13 +291,11 @@ define(
                     var data = JSON.stringify(custom_data);
                     drmParam.CustomData = btoa(data);
                 }
-                try {
-                    this._player.setDrm("PLAYREADY", "SetProperties", JSON.stringify(drmParam));
-                    this._drmConfigured = true;
-                    this._player.prepare();
-                } catch (e) {
-                    console.log("Problem setting DRM params ", e.name)
-                }
+                var params = [ "PLAYREADY", "SetProperties", JSON.stringify(drmParam) ];
+
+                this._sendMessage(Command.SETDRM, params);
+                this._drmConfigured = true;
+                this._sendMessage(Command.PREPARE);
             },
 
             getSubtitleTracks: function() {
@@ -312,14 +310,13 @@ define(
             },
 
             _prepare: function() {
-                this._player.open(this._source);
-                this._player.setListener(this._createListener());
+                this._sendMessage(Command.OPEN, this._source);
+                this._sendMessage(Command.SETLISTENERS/*,this._createListener()*/);
 
-                this._player.setDisplayRect(
-                    this._playerPlugin.offsetLeft, this._playerPlugin.offsetTop,
-                    this._playerPlugin.offsetWidth, this._playerPlugin.offsetHeight
-                );
-                this._player.setDisplayMethod('PLAYER_DISPLAY_MODE_FULL_SCREEN');
+                var params = [ 0, 0, dimensions.width, dimensions.height ];
+
+                this._sendMessage(Command.SETDISPLAYRECT, params);
+                this._sendMessage(Command.SETDISPLAYMETHOD, 'PLAYER_DISPLAY_MODE_FULL_SCREEN');
                 this._toStopped();
             },
 
@@ -373,7 +370,7 @@ define(
                     if (this._postBufferingState === MediaPlayer.STATE.PAUSED) {
                         this._tryPauseWithStateTransition();
                     } else {
-                        this._player.play();
+                        this._sendMessage(Command.PLAY);
                         this._toPlaying();
                     }
                 }
@@ -394,12 +391,12 @@ define(
             },
 
             _stopPlayer: function() {
-                this._player.stop();
+                this._sendMessage(Command.STOP);
                 this._currentTimeKnown = false;
             },
 
             _tryPauseWithStateTransition: function() {
-                this._player.pause();
+                this._sendMessage(Command.PAUSE);
                 this._toPaused();
                 this._tryingToPause = false;
             },
@@ -453,12 +450,12 @@ define(
                 this._tryingToPause = false;
                 this._currentTimeKnown = false;
                 this._drmConfigured = false;
-                this._player.reset();
+                this._sendMessage(Command.RESET);
             },
 
             _seekToPosition: function(seconds) {
                 var self = this;
-                this._player.seekTo(seconds * 1000);
+                this._sendMessage(Command.SEEKTO, seconds * 1000);
             },
 
             _reportError: function(errorMessage) {
@@ -506,8 +503,17 @@ define(
 
             _setDisplayFullScreenForVideo: function() {
                 var dimensions = RuntimeContext.getDevice().getScreenSize();
-                this._player.setDisplayRect(0, 0, dimensions.width, dimensions.height);
-                this._player.setDisplayMethod('PLAYER_DISPLAY_MODE_FULL_SCREEN');
+                var params = [ 0, 0, dimensions.width, dimensions.height ];
+                this._sendMessage(Command.SETDISPLAYRECT, params);
+                this._sendMessage(Command.SETDISPLAYMETHOD, 'PLAYER_DISPLAY_MODE_FULL_SCREEN');
+            },
+
+            _sendMessage: function(command, extraParam) {
+                if (typeof extraParam !== "undefined")
+                    extraParam = '';
+
+                window.postMessage({
+                  type: 'command', action: command, extraParam: extraParam }, '*');
             },
 
             /**
@@ -517,6 +523,22 @@ define(
              */
             CURRENT_TIME_TOLERANCE: 2.5
         });
+
+        var Command = {
+            PLAY : 'play',
+            STOP : 'stop',
+            PAUSE : 'pause',
+            GETCURRENTTIME : 'get_current_time',
+            GETDURATION : 'get_duration',
+            SETDRM : 'set_drm',
+            PREPARE : 'prepare',
+            RESET : 'reset',
+            OPEN : 'open',
+            SETLISTENERS: 'set_listeners',
+            SETDISPLAYRECT: 'set_display_rect',
+            SETDISPLAYMETHOD: 'set_display_method',
+            SEEKTO: 'seek_to'
+        };
 
         var instance = new Player();
 
