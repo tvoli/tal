@@ -24,6 +24,11 @@ define(
                 this._tryingToPause = false;
                 this._currentTimeKnown = false;
                 this._drmConfigured = false;
+
+                var self = this;
+                window.addEventListener('message', function(message) {
+                    self._handleMessage(message);
+                });
             },
 
             /**
@@ -323,47 +328,6 @@ define(
                 this._toStopped();
             },
 
-            _createListener: function() {
-                self = this;
-                if (!this._listener) {
-                    this._listener = {
-                        onbufferingstart: function() {
-                            self._onDeviceBuffering();
-                        },
-                        onbufferingprogress: function(percent) {
-                            console.log("Buffering progress. " + percent);
-                        },
-                        onevent: function(eventType, eventData) {
-                            console.log("event: " + eventType + ", data: " + eventData);
-                        },
-                        onerror: function(eventType) {
-                            self._onDeviceError("event type error : " + eventType);
-                        },
-                        onbufferingcomplete: function() {
-                            console.log("onbufferingcomplete");
-                            self._onFinishedBuffering();
-                        },
-                        onstreamcompleted: function() {
-                            console.log("onstreamcompleted");
-                            self._onEndOfMedia();
-                        },
-                        oncurrentplaytime: function(currentTime) {
-                            console.log("Current Playtime : " + currentTime);
-                            self._onCurrentTime(currentTime);
-                        },
-                        ondrmevent: function(drmEvent, drmData) {
-                            console.log("DRM callback: " + drmEvent + ", data: " + drmData);
-                        },
-                        onsubtitlechange: function(duration, text, type, attriCount, attributes) {
-                            console.log("subtitle changed");
-                    	    document.getElementById("subtitleArea").innerHTML = text;
-                    	}
-                    };
-                }
-
-                return this._listener;
-            },
-
             _onFinishedBuffering: function() {
                 if (this.getState() !== MediaPlayer.STATE.BUFFERING) {
                     return;
@@ -519,6 +483,39 @@ define(
                   type: 'command', action: command, extraParam: extraParam }, '*');
             },
 
+            _handleMessage: function(event) {
+                if (event.data.type == "eventresponse") {
+                    console.log(event);
+                    switch (event.data.action) {
+                        case Event.ONBUFFERINGSTART:
+                            this._onDeviceBuffering();
+                        break;
+                        case Event.ONBUFFERINGPROGRESS:
+                            console.log("Buffering progress. " + event.data.extraParam);
+                        break;
+                        case Event.ONEVENT:
+                        break;
+                        case Event.ONERROR:
+                            this._onDeviceError("event type error : " + event.data.extraParam);
+                        break;
+                        case Event.ONBUFFERINGCOMPLETE:
+                            this._onFinishedBuffering();
+                        break;
+                        case Event.ONSTREAMCOMPLETED:
+                            this._onEndOfMedia();
+                        break;
+                        case Event.ONCURRENTPLAYTIME:
+                            this._onCurrentTime(event.data.extraParam);
+                        break;
+                        case Event.ONDRMEVENT:
+                        break;
+                        case Event.ONSUBTITLECHANGE:
+                        break;
+                        default:
+                            console.log("event not implemented");
+                    }
+                }
+            },
             /**
              * @constant {Number} Time (in seconds) compared to current time within which seeking has no effect.
              * On a sample device (Samsung FoxP 2013), seeking by two seconds worked 90% of the time, but seeking
@@ -542,6 +539,18 @@ define(
             SETDISPLAYMETHOD: 'set_display_method',
             SEEKTO: 'seek_to'
         };
+
+        var Event = {
+            ONBUFFERINGSTART: 'onbufferingstart',
+            ONBUFFERINGPROGRESS: 'onbufferingprogress',
+            ONEVENT: 'onevent',
+            ONERROR: 'onerror',
+            ONBUFFERINGCOMPLETE: 'onbufferingcomplete',
+            ONSTREAMCOMPLETED: 'onstreamcompleted',
+            ONCURRENTPLAYTIME: 'oncurrentplaytime',
+            ONDRMEVENT: 'ondrmevent',
+            ONSUBTITLECHANGE: 'onsubtitlechange'
+        }
 
         var instance = new Player();
 
