@@ -24,6 +24,8 @@ define(
                 this._tryingToPause = false;
                 this._currentTimeKnown = false;
                 this._drmConfigured = false;
+                this._totalTracks = [];
+                this._currentTracks = [];
 
                 var self = this;
                 window.addEventListener('message', function(message) {
@@ -305,14 +307,17 @@ define(
             },
 
             getSubtitleTracks: function() {
-                // TODO define a format to return
-                var totalTracks = webapis.avplay.getTotalTrackInfo();
-                var currentTracks = webapis.avplay.getCurrentStreamInfo();
-
                 return {
-                    subtitleTracks: totalTracks,
-                    currentSubtitleTrack: currentTracks
+                    subtitleTracks: this._totalTracks,
+                    currentSubtitleTrack: this._currentTracks
                 };
+            },
+
+            /**
+             * @inheritDoc
+             */
+            setSubtitleTrack: function (subtitleTrack) {
+                this._sendMessage(Command.SETSUBTITLE, subtitleTrack);
             },
 
             _prepare: function() {
@@ -511,6 +516,11 @@ define(
                         break;
                         case Event.ONSUBTITLECHANGE:
                         break;
+                        case Event.ONSUBTITLEINFO:
+                            var subtitleInfo = event.data.extraParam;
+                            this._currentTracks = subtitleInfo[0];
+                            this._totalTracks = subtitleInfo[1];
+                        break;
                         default:
                             console.log("event not implemented");
                     }
@@ -549,7 +559,8 @@ define(
             ONSTREAMCOMPLETED: 'onstreamcompleted',
             ONCURRENTPLAYTIME: 'oncurrentplaytime',
             ONDRMEVENT: 'ondrmevent',
-            ONSUBTITLECHANGE: 'onsubtitlechange'
+            ONSUBTITLECHANGE: 'onsubtitlechange',
+            ONSUBTITLEINFO: 'onsubtitleinfo'
         }
 
         var instance = new Player();
