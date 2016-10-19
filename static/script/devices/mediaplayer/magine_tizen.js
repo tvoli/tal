@@ -309,13 +309,17 @@ define(
 
             getSubtitleTracks: function() {
                 return {
-                    subtitleTracks: this._totalTracks,
+                    subtitleTracks: _getMediaInfo(MediaTrackType.SUBTITLE),
                     currentSubtitleTrack: this._currentTracks
                 };
             },
 
             setSubtitleTrack: function (subtitleTrack) {
                 this._sendMessage(Command.SETSUBTITLE, subtitleTrack);
+            },
+
+            getAudioTracks: function () {
+                return _getMediaInfo(MediaTrackType.AUDIO);
             },
 
             suspendPlayer: function () {
@@ -469,6 +473,17 @@ define(
                 this._emitEvent(MediaPlayer.EVENT.COMPLETE);
             },
 
+            _getMediaInfo: function (mediaTrackType) {
+                var totalTracksArray = [];
+
+                for (var i = 0; i < this._totalTracks.length; i++) {
+                  if (totalTracks[i].type == mediaTrackType)
+                      totalTracksArray.push(totalTracks[i].index);
+                }
+
+                return totalTracksArray;
+            },
+
             _toEmpty: function () {
                 this._wipe();
                 this._state = MediaPlayer.STATE.EMPTY;
@@ -526,7 +541,7 @@ define(
                             break;
                         case Event.ONSUBTITLECHANGE:
                             break;
-                        case Event.ONSUBTITLEINFO:
+                        case Event.ONMEDIAINFO:
                             var subtitleInfo = event.data.extraParam;
                             this._currentTracks = subtitleInfo[0];
                             this._totalTracks = subtitleInfo[1];
@@ -545,20 +560,21 @@ define(
         });
 
         var Command = {
-            PLAY : 'play',
-            STOP : 'stop',
-            PAUSE : 'pause',
-            GETCURRENTTIME : 'get_current_time',
-            GETDURATION : 'get_duration',
-            SETDRM : 'set_drm',
-            PREPARE : 'prepare',
-            RESET : 'reset',
-            OPEN : 'open',
+            PLAY: 'play',
+            STOP: 'stop',
+            PAUSE: 'pause',
+            GETCURRENTTIME: 'get_current_time',
+            GETDURATION: 'get_duration',
+            SETDRM: 'set_drm',
+            PREPARE: 'prepare',
+            RESET: 'reset',
+            OPEN: 'open',
             SETLISTENERS: 'set_listeners',
             SETDISPLAYRECT: 'set_display_rect',
             SETDISPLAYMETHOD: 'set_display_method',
             SEEKTO: 'seek_to',
             SETSUBTITLE: 'setsubtitle',
+            SETSOUNDTRACK: 'setsoundtrack',
             RESTORE: 'restore',
             SUSPEND: 'suspend'
         };
@@ -573,7 +589,12 @@ define(
             ONCURRENTPLAYTIME: 'oncurrentplaytime',
             ONDRMEVENT: 'ondrmevent',
             ONSUBTITLECHANGE: 'onsubtitlechange',
-            ONSUBTITLEINFO: 'onsubtitleinfo'
+            ONMEDIAINFO: 'onmediainfo'
+        }
+
+        var MediaTrackType = {
+            AUDIO: "AUDIO",
+            SUBTITLE: "TEXT"
         }
 
         var instance = new Player();
