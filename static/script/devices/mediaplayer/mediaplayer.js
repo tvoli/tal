@@ -351,6 +351,22 @@ define(
                     throw new Error('setAudioTrack method has not been implemented');
                },
 
+               /**
+                * Suspend player.
+                */
+
+                suspendPlayer: function () {
+                     throw new Error('suspendPlayer method has not been implemented');
+                },
+
+                /**
+                 * Restore player.
+                 */
+
+                 restorePlayer: function () {
+                      throw new Error('restorePlayer method has not been implemented');
+                 },
+
             _getClampOffsetFromConfig: function() {
                 var clampOffsetFromEndOfRange;
                 var config = RuntimeContext.getDevice().getConfig();

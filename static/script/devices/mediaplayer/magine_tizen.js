@@ -26,6 +26,7 @@ define(
                 this._drmConfigured = false;
                 this._totalTracks = [];
                 this._currentTracks = [];
+                this._suspended = false;
 
                 var self = this;
                 window.addEventListener('message', function(message) {
@@ -313,11 +314,18 @@ define(
                 };
             },
 
-            /**
-             * @inheritDoc
-             */
             setSubtitleTrack: function (subtitleTrack) {
                 this._sendMessage(Command.SETSUBTITLE, subtitleTrack);
+            },
+
+            suspendPlayer: function () {
+                this._sendMessage(Command.SUSPEND);
+                this._suspended = true;
+            },
+
+            restorePlayer: function () {
+                this._sendMessage(Command.RESTORE);
+                this._suspended = false;
             },
 
             _prepare: function() {
@@ -467,6 +475,7 @@ define(
             },
 
             _toError: function(errorMessage) {
+                console.log("errorMessage " + errorMessage);
                 this._wipe();
                 this._state = MediaPlayer.STATE.ERROR;
                 this._reportError(errorMessage);
@@ -484,43 +493,44 @@ define(
                 if (typeof extraParam === "undefined")
                     extraParam = '';
 
+                console.log("Sending to IFRAME: " + command);
                 window.postMessage({
                   type: 'command', action: command, extraParam: extraParam }, '*');
             },
 
             _handleMessage: function(event) {
                 if (event.data.type == "eventresponse") {
-                    console.log(event);
+                    console.log("Receiving from IFRAME " + event.data.action);
                     switch (event.data.action) {
                         case Event.ONBUFFERINGSTART:
                             this._onDeviceBuffering();
-                        break;
+                            break;
                         case Event.ONBUFFERINGPROGRESS:
                             console.log("Buffering progress. " + event.data.extraParam);
-                        break;
+                            break;
                         case Event.ONEVENT:
-                        break;
+                            break;
                         case Event.ONERROR:
                             this._onDeviceError("event type error : " + event.data.extraParam);
-                        break;
+                            break;
                         case Event.ONBUFFERINGCOMPLETE:
                             this._onFinishedBuffering();
-                        break;
+                            break;
                         case Event.ONSTREAMCOMPLETED:
                             this._onEndOfMedia();
-                        break;
+                            break;
                         case Event.ONCURRENTPLAYTIME:
                             this._onCurrentTime(event.data.extraParam);
-                        break;
+                            break;
                         case Event.ONDRMEVENT:
-                        break;
+                            break;
                         case Event.ONSUBTITLECHANGE:
-                        break;
+                            break;
                         case Event.ONSUBTITLEINFO:
                             var subtitleInfo = event.data.extraParam;
                             this._currentTracks = subtitleInfo[0];
                             this._totalTracks = subtitleInfo[1];
-                        break;
+                            break;
                         default:
                             console.log("event not implemented");
                     }
@@ -548,7 +558,9 @@ define(
             SETDISPLAYRECT: 'set_display_rect',
             SETDISPLAYMETHOD: 'set_display_method',
             SEEKTO: 'seek_to',
-            SETSUBTITLE: 'setsubtitle'
+            SETSUBTITLE: 'setsubtitle',
+            RESTORE: 'restore',
+            SUSPEND: 'suspend'
         };
 
         var Event = {
