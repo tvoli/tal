@@ -24,6 +24,7 @@ define(
                 this._tryingToPause = false;
                 this._currentTimeKnown = false;
                 this._drmConfigured = false;
+                alert("######### MAGINE ORSAY INIT ###########");
             },
 
             /**
@@ -128,7 +129,7 @@ define(
                 this._postBufferingState = MediaPlayer.STATE.PLAYING;
                 switch (this.getState()) {
                     case MediaPlayer.STATE.STOPPED:
-                        // this._setDisplayFullScreenForVideo();
+                        this._setDisplayFullScreenForVideo();
                         this._sendMessage(Command.PLAY);
                         this._toPlaying();
                         break;
@@ -148,7 +149,7 @@ define(
 
                 switch (this.getState()) {
                     case MediaPlayer.STATE.STOPPED:
-                        // this._setDisplayFullScreenForVideo();
+                        this._setDisplayFullScreenForVideo();
                         this._seekToPosition(seekingTo);
                         this._sendMessage(Command.PLAY);
                         break;
@@ -240,7 +241,16 @@ define(
              * @inheritDoc
              */
             getCurrentTime: function () {
-                return this._sendMessage(Command.GETCURRENTTIME) / 1000;
+              alert("getCurrentTime FUNCTION!!!!!! ");
+              return 0;
+              // var time;
+              // try {
+              //   time = this._sendMessage(Command.GETCURRENTTIME) / 1000;
+              //   alert("getCurrentTime returned " + time);
+              //   return time;
+              // } catch (e) {
+              //   alert("getCurrentTime ERROR " + e);
+              // }
             },
 
             /**
@@ -280,6 +290,8 @@ define(
             },
 
             setDRMParams: function(license_url, custom_data) {
+
+                alert("setDRMParams license_url= "+ license_url + "custom_data= " + custom_data );
                 this._drmOpt = {
                     drm : {
                         type : "Playready",
@@ -317,7 +329,12 @@ define(
 
             _prepare: function() {
                 this._sendMessage(Command.OPEN, this._source, this._drmOpt);
-                this._sendMessage(Command.SETLISTENERS);
+                // this._sendMessage(Command.SETLISTENERS);
+                var dimensions = RuntimeContext.getDevice().getScreenSize();
+
+                var params = [ 0, 0, dimensions.width, dimensions.height ];
+
+                this._sendMessage(Command.SETDISPLAYRECT, params);
                 this._toStopped();
             },
 
@@ -500,11 +517,18 @@ define(
                 this._wipe();
                 this._state = MediaPlayer.STATE.ERROR;
                 this._reportError(errorMessage);
+                alert(">>>>>>>>>>> _toError: " + errorMessage);
                 throw 'ApiError: ' + errorMessage;
             },
 
+            _setDisplayFullScreenForVideo: function() {
+                var dimensions = RuntimeContext.getDevice().getScreenSize();
+                var params = [ 0, 0, dimensions.width, dimensions.height ];
+                this._sendMessage(Command.SETDISPLAYRECT, params);
+            },
+
             _sendMessage: function(command, extraParam) {
-                if (typeof extraParam !== "undefined")
+                if (typeof extraParam === "undefined")
                     extraParam = '';
 
                 window.postMessage({
@@ -528,7 +552,7 @@ define(
             SETDRM : 'set_drm',
             RESET : 'reset',
             OPEN : 'open',
-            SETLISTENERS: 'set_listeners',
+            SETDISPLAYRECT: 'set_display_rect',
             SEEKTO: 'seek_to'
         };
 
@@ -542,6 +566,7 @@ define(
 
         // Mixin this MediaPlayer implementation, so that device.getMediaPlayer() returns the correct implementation for the device
         Device.prototype.getMediaPlayer = function() {
+            alert("######### MAGINE ORSAY getMediaPlayer ###########");
             return instance;
         };
 
