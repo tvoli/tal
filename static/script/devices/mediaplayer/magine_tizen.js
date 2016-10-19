@@ -30,7 +30,7 @@ define(
                 var self = this;
                 window.addEventListener('message', function(message) {
                     self._handleMessage(message);
-                });
+                }, false);
             },
 
             /**
@@ -547,7 +547,8 @@ define(
             SETLISTENERS: 'set_listeners',
             SETDISPLAYRECT: 'set_display_rect',
             SETDISPLAYMETHOD: 'set_display_method',
-            SEEKTO: 'seek_to'
+            SEEKTO: 'seek_to',
+            SETSUBTITLE: 'setsubtitle'
         };
 
         var Event = {
