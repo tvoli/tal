@@ -24,7 +24,24 @@ define(
                 this._tryingToPause = false;
                 this._currentTimeKnown = false;
                 this._drmConfigured = false;
-                alert("######### MAGINE ORSAY INIT ###########");
+                this._player = null;
+            },
+
+            getPlayer: function() {
+              try {
+                webapis.avplay.getAVPlay(this.onAVPlayObtained.bind(this), this.onAVPlayError.bind(this));
+              } catch (e) {
+                alert ('error on getting player: ' + e.message);
+              }
+            },
+
+            onAVPlayObtained: function (avPlayObject) {
+                this._player = avPlayObject;
+                this._player.init();
+            },
+
+            onAVPlayError: function (error) {
+                alert('AVPlayer not available. ' + error);
             },
 
             /**
@@ -54,13 +71,13 @@ define(
                 case MediaPlayer.STATE.BUFFERING:
                     if (this._tryingToPause) {
                         this._tryingToPause = false;
-                        this._sendMessage(Command.PLAY);
+                        this._play();
                         this._toPlaying();
                     }
                     break;
 
                 case MediaPlayer.STATE.PAUSED:
-                    this._sendMessage(Command.PLAY);
+                    this._play();
                     this._toPlaying();
                     break;
 
@@ -99,20 +116,20 @@ define(
                     if (!this._currentTimeKnown) {
                         this._deferSeekingTo = seekingTo;
                     } else if (this._isNearToCurrentTime(seekingTo)) {
-                        this._sendMessage(Command.PLAY);
+                        this._play();
                         this._toPlaying();
                     } else {
                         this._seekToPosition(seekingTo);
-                        this._sendMessage(Command.PLAY);
+                        this._play();
                         this._toPlaying();
                     }
                     break;
 
                 case MediaPlayer.STATE.COMPLETE:
-                    this._sendMessage(Command.STOP);
+                    this._stop();
                     // this._setDisplayFullScreenForVideo();
                     this._seekToPosition(seekingTo);
-                    this._sendMessage(Command.PLAY);
+                    this._play();
                     this._toPlaying();
                     break;
 
@@ -129,8 +146,8 @@ define(
                 this._postBufferingState = MediaPlayer.STATE.PLAYING;
                 switch (this.getState()) {
                     case MediaPlayer.STATE.STOPPED:
-                        this._setDisplayFullScreenForVideo();
-                        this._sendMessage(Command.PLAY);
+                        // this._setDisplayFullScreenForVideo();
+                        this._play();
                         this._toPlaying();
                         break;
 
@@ -151,7 +168,7 @@ define(
                     case MediaPlayer.STATE.STOPPED:
                         this._setDisplayFullScreenForVideo();
                         this._seekToPosition(seekingTo);
-                        this._sendMessage(Command.PLAY);
+                        this._play();
                         break;
 
                     default:
@@ -172,7 +189,7 @@ define(
                         break;
 
                     case MediaPlayer.STATE.PLAYING:
-                        this._sendMessage(Command.PAUSE);
+                        this._pause();
                         this._toPaused();
                         break;
 
@@ -241,16 +258,8 @@ define(
              * @inheritDoc
              */
             getCurrentTime: function () {
-              alert("getCurrentTime FUNCTION!!!!!! ");
-              return 0;
-              // var time;
-              // try {
-              //   time = this._sendMessage(Command.GETCURRENTTIME) / 1000;
-              //   alert("getCurrentTime returned " + time);
-              //   return time;
-              // } catch (e) {
-              //   alert("getCurrentTime ERROR " + e);
-              // }
+                alert("getCurrentTime FUNCTION!!!!!! ");
+                return 0;
             },
 
             /**
@@ -304,13 +313,13 @@ define(
 
                 if (license_url !== '' && license_url !== undefined) {
                   var params = [ drmData.ADD_LICENSE, license_url, license_url.length ];
-                  this._sendMessage(Command.SETDRM, params);
+                  this._set_drm(params);
                 }
                 if (custom_data !== '' && custom_data !== undefined) {
                     var data = JSON.stringify(custom_data);
                     var preparedCustomData = btoa(data);
                     var params = [ drmData.CUSTOM_DATA, preparedCustomData, preparedCustomData.length ];
-                    this._sendMessage(Command.SETDRM, params);
+                    this._set_drm(params);
                 }
 
                 this._drmConfigured = true;
@@ -328,13 +337,17 @@ define(
             },
 
             _prepare: function() {
-                this._sendMessage(Command.OPEN, this._source, this._drmOpt);
+                alert('>>> Magine orsay prepare');
+                if (this._player === null) {
+                    this.getPlayer();
+                }
+                this._open(this._source, this._drmOpt);
                 // this._sendMessage(Command.SETLISTENERS);
                 var dimensions = RuntimeContext.getDevice().getScreenSize();
 
                 var params = [ 0, 0, dimensions.width, dimensions.height ];
 
-                this._sendMessage(Command.SETDISPLAYRECT, params);
+                // this._set_display_rect(params);
                 this._toStopped();
             },
 
@@ -388,7 +401,7 @@ define(
                     if (this._postBufferingState === MediaPlayer.STATE.PAUSED) {
                         this._tryPauseWithStateTransition();
                     } else {
-                        this._sendMessage(Command.PLAY);
+                        this._play();
                         this._toPlaying();
                     }
                 }
@@ -409,12 +422,12 @@ define(
             },
 
             _stopPlayer: function() {
-                this._sendMessage(Command.STOP);
+                this._stop();
                 this._currentTimeKnown = false;
             },
 
             _tryPauseWithStateTransition: function() {
-                this._sendMessage(Command.PAUSE);
+                this._pause();
                 this._toPaused();
                 this._tryingToPause = false;
             },
@@ -469,12 +482,11 @@ define(
                 this._currentTimeKnown = false;
                 this._drmConfigured = false;
                 this._drmOpt = undefined;
-                this._sendMessage(Command.RESET);
+                this._reset();
             },
 
             _seekToPosition: function(seconds) {
-                var self = this;
-                this._sendMessage(Command.SEEKTO, seconds * 1000);
+                this._seek_to(seconds * 1000);
             },
 
             _reportError: function(errorMessage) {
@@ -524,15 +536,56 @@ define(
             _setDisplayFullScreenForVideo: function() {
                 var dimensions = RuntimeContext.getDevice().getScreenSize();
                 var params = [ 0, 0, dimensions.width, dimensions.height ];
-                this._sendMessage(Command.SETDISPLAYRECT, params);
+                this._set_display_rect(params);
             },
 
-            _sendMessage: function(command, extraParam) {
-                if (typeof extraParam === "undefined")
-                    extraParam = '';
+            _play: function(){
+                alert('play');
+                this._player.show();
+                this._player.play(function (playSuccessCB) { alert(" playing the video is successfully."); },
+                                  function (error) { alert(" Play error = " + error.message); }
+                                 );
+            },
 
-                window.postMessage({
-                  type: 'command', action: command, extraParam: extraParam }, '*');
+            _open: function(source, drmParams) {
+                if (drmParams !== null) {
+                    alert('open source = '+ source + ' drmParams = ' + drmParams + 'this._player = ' + this._player);
+                    this._player.open(source, drmParams);
+                } else {
+                    alert('open source = '+ source + ' this._player = ' + this._player);
+                    this._player.open(source);
+                }
+                // this._player.open(source, drmParams);
+            },
+
+            _set_drm: function(params) {
+                alert('set_drm');
+                this._player.setPlayerProperty(params[0], params[1], params[2]);
+            },
+
+            _stop: function() {
+                alert('stop');
+                this._player.stop();
+            },
+
+            _pause: function() {
+                alert('pause');
+                this._player.pause();
+            },
+
+            _reset: function() {
+                alert('reset');
+                // this._player.reset();
+            },
+
+            _set_display_rect: function(rect) {
+                alert('set_display_rect ' + rect[0] + rect[1] + rect[2] + rect[3]);
+                this._player.setDisplayRect(rect);
+            },
+
+            _seek_to: function(seconds) {
+                alert('seek_to');
+                this._player.seekTo(seconds * 1000);
             },
 
             /**
@@ -543,30 +596,30 @@ define(
             CURRENT_TIME_TOLERANCE: 2.5
         });
 
-        var Command = {
-            PLAY : 'play',
-            STOP : 'stop',
-            PAUSE : 'pause',
-            GETCURRENTTIME : 'get_current_time',
-            GETDURATION : 'get_duration',
-            SETDRM : 'set_drm',
-            RESET : 'reset',
-            OPEN : 'open',
-            SETDISPLAYRECT: 'set_display_rect',
-            SEEKTO: 'seek_to'
-        };
-
         var drmData = {
             CUSTOM_DATA: 3,
             ADD_LICENSE: 4,
             DEL_LICENSE: 6
         };
 
+        var bufferingCB = {
+            onbufferingstart : function() { alert('buffering started'); },
+            onbufferingprogress: function(percent) { alert ('on buffering : ' + percent); },
+            onbufferingcomplete:function() { alert ('buffering completely'); }
+        };
+
+        var playCB = {
+            oncurrentplaytime: function(time) { alert ('playing time : ' + time); },
+            onresolutionchanged: function(width, height) { alert ('resolution changed : ' + width + ", " + height); },
+            onstreamcompleted: function() { alert ('streaming completed'); },
+            onerror: function (error) { alert (error.name); }
+        };
+
         var instance = new Player();
 
         // Mixin this MediaPlayer implementation, so that device.getMediaPlayer() returns the correct implementation for the device
         Device.prototype.getMediaPlayer = function() {
-            alert("######### MAGINE ORSAY getMediaPlayer ###########");
+            alert('######### MAGINE ORSAY getMediaPlayer ###########');
             return instance;
         };
 
