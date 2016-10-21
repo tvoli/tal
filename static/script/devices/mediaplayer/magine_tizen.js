@@ -8,11 +8,6 @@ define(
     function(Device, MediaPlayer, RuntimeContext) {
         'use strict';
 
-        /**
-         * @name antie.devices.mediaplayer.SamsungMaple
-         * @class
-         * @extends antie.devices.mediaplayer.MediaPlayer
-         */
         var Player = MediaPlayer.extend({
 
             init: function() {
@@ -24,14 +19,9 @@ define(
                 this._tryingToPause = false;
                 this._currentTimeKnown = false;
                 this._drmConfigured = false;
-                this._totalTracks = [];
-                this._currentTracks = [];
                 this._suspended = false;
 
-                var self = this;
-                window.addEventListener('message', function(message) {
-                    self._handleMessage(message);
-                }, false);
+                this._player = webapis.avplay;
             },
 
             /**
@@ -61,13 +51,13 @@ define(
                 case MediaPlayer.STATE.BUFFERING:
                     if (this._tryingToPause) {
                         this._tryingToPause = false;
-                        this._sendMessage(Command.PLAY);
+                        this._player.play();
                         this._toPlaying();
                     }
                     break;
 
                 case MediaPlayer.STATE.PAUSED:
-                    this._sendMessage(Command.PLAY);
+                    this._player.play();
                     this._toPlaying();
                     break;
 
@@ -106,20 +96,20 @@ define(
                     if (!this._currentTimeKnown) {
                         this._deferSeekingTo = seekingTo;
                     } else if (this._isNearToCurrentTime(seekingTo)) {
-                        this._sendMessage(Command.PLAY);
+                        this._player.play();
                         this._toPlaying();
                     } else {
                         this._seekToPosition(seekingTo);
-                        this._sendMessage(Command.PLAY);
+                        this._player.play();
                         this._toPlaying();
                     }
                     break;
 
                 case MediaPlayer.STATE.COMPLETE:
-                    this._sendMessage(Command.STOP);
+                    this._player.stop();
                     this._setDisplayFullScreenForVideo();
                     this._seekToPosition(seekingTo);
-                    this._sendMessage(Command.PLAY);
+                    this._player.play();
                     this._toPlaying();
                     break;
 
@@ -137,7 +127,7 @@ define(
                 switch (this.getState()) {
                     case MediaPlayer.STATE.STOPPED:
                         this._setDisplayFullScreenForVideo();
-                        this._sendMessage(Command.PLAY);
+                        this._player.play();
                         this._toPlaying();
                         break;
 
@@ -158,7 +148,7 @@ define(
                     case MediaPlayer.STATE.STOPPED:
                         this._setDisplayFullScreenForVideo();
                         this._seekToPosition(seekingTo);
-                        this._sendMessage(Command.PLAY);
+                        this._player.play();
                         break;
 
                     default:
@@ -179,7 +169,7 @@ define(
                         break;
 
                     case MediaPlayer.STATE.PLAYING:
-                        this._sendMessage(Command.PAUSE);
+                        this._player.pause();
                         this._toPaused();
                         break;
 
@@ -248,7 +238,7 @@ define(
              * @inheritDoc
              */
             getCurrentTime: function () {
-                return this._currentTime
+                return this._player.getCurrentTime() / 1000;
             },
 
             /**
@@ -269,8 +259,7 @@ define(
              * @inheritDoc
              */
             _getMediaDuration: function() {
-                //return this._player.getDuration() / 1000;
-                return 0;
+                return this._player.getDuration() / 1000;
             },
 
             /**
@@ -284,11 +273,11 @@ define(
              * @inheritDoc
              */
             getPlayerElement: function() {
-                return this._playerPlugin;
+                return this._player;
             },
 
             setDRMParams: function(license_url, custom_data) {
-                var drmParam = {
+                this._drmParam = {
                     DeleteLicenseAfterUse: true
                 };
 
@@ -299,50 +288,94 @@ define(
                     var data = JSON.stringify(custom_data);
                     drmParam.CustomData = btoa(data);
                 }
-
-                var params = [ "PLAYREADY", "SetProperties", JSON.stringify(drmParam) ];
-
-                this._sendMessage(Command.SETDRM, params);
-                this._drmConfigured = true;
-                this._sendMessage(Command.PREPARE);
+                try {
+                    this._player.setDrm("PLAYREADY", "SetProperties", JSON.stringify(this._drmParam));
+                    this._drmConfigured = true;
+                    this._player.prepare();
+                } catch (e) {
+                    console.log("Problem setting DRM params ", e.name)
+                }
             },
 
             getSubtitleTracks: function() {
                 return {
-                    subtitleTracks: _getMediaInfo(MediaTrackType.SUBTITLE),
-                    currentSubtitleTrack: this._currentTracks
+                    subtitleTracks: _getMediaInfo(this._player.getTotalTrackInfo(), MediaTrackType.SUBTITLE),
+                    currentSubtitleTrack: _getMediaInfo(this._player.getCurrentStreamInfo(), MediaTrackType.SUBTITLE)
                 };
             },
 
             setSubtitleTrack: function (subtitleTrack) {
-                this._sendMessage(Command.SETSUBTITLE, subtitleTrack);
+                this._player.setSelectTrack("TEXT", subtitleTrack);
             },
 
             getAudioTracks: function () {
-                return _getMediaInfo(MediaTrackType.AUDIO);
+                return _getMediaInfo(this._player.getTotalTrackInfo(), MediaTrackType.AUDIO);
             },
 
             suspendPlayer: function () {
-                this._sendMessage(Command.SUSPEND);
+                this._player.suspend();
                 this._suspended = true;
             },
 
             restorePlayer: function () {
-                this._sendMessage(Command.RESTORE);
+                this._player.restore(this._source, this._currentTime, false);
+                this._player.setDrm("PLAYREADY", "SetProperties", JSON.stringify(this._drmParam));
+                this._player.prepare();
+
                 this._suspended = false;
             },
 
             _prepare: function() {
-                var dimensions = RuntimeContext.getDevice().getScreenSize();
+                this._player.open(this._source);
+                this._player.setListener(this._createListener());
 
-                this._sendMessage(Command.OPEN, this._source);
-                this._sendMessage(Command.SETLISTENERS);
-
-                var params = [ 0, 0, dimensions.width, dimensions.height ];
-
-                this._sendMessage(Command.SETDISPLAYRECT, params);
-                this._sendMessage(Command.SETDISPLAYMETHOD, 'PLAYER_DISPLAY_MODE_FULL_SCREEN');
+                this._player.setDisplayRect(
+                    this._playerPlugin.offsetLeft, this._playerPlugin.offsetTop,
+                    this._playerPlugin.offsetWidth, this._playerPlugin.offsetHeight
+                );
+                this._player.setDisplayMethod('PLAYER_DISPLAY_MODE_FULL_SCREEN');
                 this._toStopped();
+            },
+
+            _createListener: function() {
+                self = this;
+                if (!this._listener) {
+                    this._listener = {
+                        onbufferingstart: function() {
+                            self._onDeviceBuffering();
+                        },
+                        onbufferingprogress: function(percent) {
+                            console.log("Buffering progress. " + percent);
+                        },
+                        onevent: function(eventType, eventData) {
+                            console.log("event: " + eventType + ", data: " + eventData);
+                        },
+                        onerror: function(eventType) {
+                            self._onDeviceError("event type error : " + eventType);
+                        },
+                        onbufferingcomplete: function() {
+                            console.log("onbufferingcomplete");
+                            self._onFinishedBuffering();
+                        },
+                        onstreamcompleted: function() {
+                            console.log("onstreamcompleted");
+                            self._onEndOfMedia();
+                        },
+                        oncurrentplaytime: function(currentTime) {
+                            console.log("Current Playtime : " + currentTime);
+                            self._onCurrentTime(currentTime);
+                        },
+                        ondrmevent: function(drmEvent, drmData) {
+                            console.log("DRM callback: " + drmEvent + ", data: " + drmData);
+                        },
+                        onsubtitlechange: function(duration, text, type, attriCount, attributes) {
+                            console.log("subtitle changed");
+                    	    document.getElementById("subtitleArea").innerHTML = text;
+                    	}
+                    };
+                }
+
+                return this._listener;
             },
 
             _onFinishedBuffering: function() {
@@ -354,7 +387,7 @@ define(
                     if (this._postBufferingState === MediaPlayer.STATE.PAUSED) {
                         this._tryPauseWithStateTransition();
                     } else {
-                        this._sendMessage(Command.PLAY);
+                        this._player.play();
                         this._toPlaying();
                     }
                 }
@@ -375,12 +408,12 @@ define(
             },
 
             _stopPlayer: function() {
-                this._sendMessage(Command.STOP);
+                this._player.stop();
                 this._currentTimeKnown = false;
             },
 
             _tryPauseWithStateTransition: function() {
-                this._sendMessage(Command.PAUSE);
+                this._player.pause();
                 this._toPaused();
                 this._tryingToPause = false;
             },
@@ -424,6 +457,17 @@ define(
                 return clampedTime;
             },
 
+            _getMediaInfo: function (mediaList, mediaTrackType) {
+                var totalTracksArray = [];
+
+                for (var i = 0; i < mediaList.length; i++) {
+                  if (mediaList[i].type == mediaTrackType)
+                      totalTracksArray.push(totalTracks[i].index);
+                }
+
+                return totalTracksArray;
+            },
+
             _wipe: function () {
                 this._stopPlayer();
                 this._type = undefined;
@@ -434,12 +478,12 @@ define(
                 this._tryingToPause = false;
                 this._currentTimeKnown = false;
                 this._drmConfigured = false;
-                this._sendMessage(Command.RESET);
+                this._player.stop();
             },
 
             _seekToPosition: function(seconds) {
                 var self = this;
-                this._sendMessage(Command.SEEKTO, seconds * 1000);
+                this._player.seekTo(seconds * 1000);
             },
 
             _reportError: function(errorMessage) {
@@ -473,24 +517,12 @@ define(
                 this._emitEvent(MediaPlayer.EVENT.COMPLETE);
             },
 
-            _getMediaInfo: function (mediaTrackType) {
-                var totalTracksArray = [];
-
-                for (var i = 0; i < this._totalTracks.length; i++) {
-                  if (totalTracks[i].type == mediaTrackType)
-                      totalTracksArray.push(totalTracks[i].index);
-                }
-
-                return totalTracksArray;
-            },
-
             _toEmpty: function () {
                 this._wipe();
                 this._state = MediaPlayer.STATE.EMPTY;
             },
 
             _toError: function(errorMessage) {
-                console.log("errorMessage " + errorMessage);
                 this._wipe();
                 this._state = MediaPlayer.STATE.ERROR;
                 this._reportError(errorMessage);
@@ -499,98 +531,12 @@ define(
 
             _setDisplayFullScreenForVideo: function() {
                 var dimensions = RuntimeContext.getDevice().getScreenSize();
-                var params = [ 0, 0, dimensions.width, dimensions.height ];
-                this._sendMessage(Command.SETDISPLAYRECT, params);
-                this._sendMessage(Command.SETDISPLAYMETHOD, 'PLAYER_DISPLAY_MODE_FULL_SCREEN');
+                this._player.setDisplayRect(0, 0, dimensions.width, dimensions.height);
+                this._player.setDisplayMethod('PLAYER_DISPLAY_MODE_FULL_SCREEN');
             },
 
-            _sendMessage: function(command, extraParam) {
-                if (typeof extraParam === "undefined")
-                    extraParam = '';
-
-                console.log("Sending to IFRAME: " + command);
-                window.postMessage({
-                  type: 'command', action: command, extraParam: extraParam }, '*');
-            },
-
-            _handleMessage: function(event) {
-                if (event.data.type == "eventresponse") {
-                    console.log("Receiving from IFRAME " + event.data.action);
-                    switch (event.data.action) {
-                        case Event.ONBUFFERINGSTART:
-                            this._onDeviceBuffering();
-                            break;
-                        case Event.ONBUFFERINGPROGRESS:
-                            console.log("Buffering progress. " + event.data.extraParam);
-                            break;
-                        case Event.ONEVENT:
-                            break;
-                        case Event.ONERROR:
-                            this._onDeviceError("event type error : " + event.data.extraParam);
-                            break;
-                        case Event.ONBUFFERINGCOMPLETE:
-                            this._onFinishedBuffering();
-                            break;
-                        case Event.ONSTREAMCOMPLETED:
-                            this._onEndOfMedia();
-                            break;
-                        case Event.ONCURRENTPLAYTIME:
-                            this._onCurrentTime(event.data.extraParam);
-                            break;
-                        case Event.ONDRMEVENT:
-                            break;
-                        case Event.ONSUBTITLECHANGE:
-                            break;
-                        case Event.ONMEDIAINFO:
-                            var subtitleInfo = event.data.extraParam;
-                            this._currentTracks = subtitleInfo[0];
-                            this._totalTracks = subtitleInfo[1];
-                            break;
-                        default:
-                            console.log("event not implemented");
-                    }
-                }
-            },
-            /**
-             * @constant {Number} Time (in seconds) compared to current time within which seeking has no effect.
-             * On a sample device (Samsung FoxP 2013), seeking by two seconds worked 90% of the time, but seeking
-             * by 2.5 seconds was always seen to work.
-             */
             CURRENT_TIME_TOLERANCE: 2.5
         });
-
-        var Command = {
-            PLAY: 'play',
-            STOP: 'stop',
-            PAUSE: 'pause',
-            GETCURRENTTIME: 'get_current_time',
-            GETDURATION: 'get_duration',
-            SETDRM: 'set_drm',
-            PREPARE: 'prepare',
-            RESET: 'reset',
-            OPEN: 'open',
-            SETLISTENERS: 'set_listeners',
-            SETDISPLAYRECT: 'set_display_rect',
-            SETDISPLAYMETHOD: 'set_display_method',
-            SEEKTO: 'seek_to',
-            SETSUBTITLE: 'setsubtitle',
-            SETSOUNDTRACK: 'setsoundtrack',
-            RESTORE: 'restore',
-            SUSPEND: 'suspend'
-        };
-
-        var Event = {
-            ONBUFFERINGSTART: 'onbufferingstart',
-            ONBUFFERINGPROGRESS: 'onbufferingprogress',
-            ONEVENT: 'onevent',
-            ONERROR: 'onerror',
-            ONBUFFERINGCOMPLETE: 'onbufferingcomplete',
-            ONSTREAMCOMPLETED: 'onstreamcompleted',
-            ONCURRENTPLAYTIME: 'oncurrentplaytime',
-            ONDRMEVENT: 'ondrmevent',
-            ONSUBTITLECHANGE: 'onsubtitlechange',
-            ONMEDIAINFO: 'onmediainfo'
-        }
 
         var MediaTrackType = {
             AUDIO: "AUDIO",
