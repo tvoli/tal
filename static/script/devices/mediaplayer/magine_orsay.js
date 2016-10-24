@@ -19,7 +19,6 @@ define(
                 this._super();
                 this._state = MediaPlayer.STATE.EMPTY;
                 this._playerPlugin = document.getElementById('playerPlugin');
-                this._deferSeekingTo = null;
                 this._postBufferingState = null;
                 this._tryingToPause = false;
                 this._currentTimeKnown = false;
@@ -107,43 +106,13 @@ define(
              */
             playFrom: function (seconds) {
                 this._postBufferingState = MediaPlayer.STATE.PLAYING;
-                var seekingTo = this.getSeekableRange() ? this._getClampedTimeForPlayFrom(seconds) : seconds;
 
                 switch (this.getState()) {
                 case MediaPlayer.STATE.BUFFERING:
-                    this._deferSeekingTo = seekingTo;
-                    break;
-
                 case MediaPlayer.STATE.PLAYING:
-                    this._toBuffering();
-                    if (!this._currentTimeKnown) {
-                        this._deferSeekingTo = seekingTo;
-                    } else if (this._isNearToCurrentTime(seekingTo)) {
-                        this._toPlaying();
-                    } else {
-                        this._seekToPosition(seekingTo);
-                    }
-                    break;
-
-
                 case MediaPlayer.STATE.PAUSED:
-                    this._toBuffering();
-                    if (!this._currentTimeKnown) {
-                        this._deferSeekingTo = seekingTo;
-                    } else if (this._isNearToCurrentTime(seekingTo)) {
-                        this._play();
-                        this._toPlaying();
-                    } else {
-                        this._seekToPosition(seekingTo);
-                        this._play();
-                        this._toPlaying();
-                    }
-                    break;
-
                 case MediaPlayer.STATE.COMPLETE:
                     this._stop();
-                    // this._setDisplayFullScreenForVideo();
-                    this._seekToPosition(seekingTo);
                     this._play();
                     this._toPlaying();
                     break;
@@ -177,12 +146,8 @@ define(
              */
             beginPlaybackFrom: function(seconds) {
                 this._postBufferingState = MediaPlayer.STATE.PLAYING;
-                var seekingTo = this.getSeekableRange() ? this._getClampedTimeForPlayFrom(seconds) : seconds;
-
                 switch (this.getState()) {
                     case MediaPlayer.STATE.STOPPED:
-                        // this._setDisplayFullScreenForVideo();
-                        this._seekToPosition(seekingTo);
                         this._play();
                         break;
 
@@ -281,14 +246,7 @@ define(
              * @inheritDoc
              */
              getSeekableRange: function() {
-                 return this._getSeekableRange();
-             },
-
-             _getSeekableRange: function() {
-                return {
-                 start: 0,
-                 end: this._getMediaDuration()
-                };
+                 return 0;
              },
 
             /**
@@ -395,20 +353,11 @@ define(
                 this._source = undefined;
                 this._mimeType = undefined;
                 this._currentTime = undefined;
-                this._deferSeekingTo = null;
                 this._tryingToPause = false;
                 this._currentTimeKnown = false;
                 this._drmConfigured = false;
                 this._drmOpt = undefined;
                 this._reset();
-            },
-
-            _seekToPosition: function(seconds) {
-              try {
-                  this._seek_to(seconds * 1000);
-                }catch (e) {
-                  alert('ERROR ON SEEK = ' + e.message);
-                }
             },
 
             _reportError: function(errorMessage) {
