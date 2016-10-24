@@ -278,17 +278,20 @@ define(
             },
 
             setDRMParams: function(license_url, custom_data) {
+                console.log("setDRMParams");
                 this._drmParam = {
                     DeleteLicenseAfterUse: true
                 };
 
                 if (license_url !== '' && license_url !== undefined) {
-                    drmParam.LicenseServer = license_url;
+                    this._drmParam.LicenseServer = license_url;
                 }
+
                 if (custom_data !== '' && custom_data !== undefined) {
                     var data = JSON.stringify(custom_data);
-                    drmParam.CustomData = btoa(data);
+                    this._drmParam.CustomData = btoa(data);
                 }
+
                 this._player.setDrm("PLAYREADY", "SetProperties", JSON.stringify(this._drmParam));
                 this._drmConfigured = true;
                 this._player.prepare();
