@@ -309,6 +309,10 @@ define(
                 return _getMediaInfo(this._player.getTotalTrackInfo(), MediaTrackType.AUDIO);
             },
 
+            setAudioTrack: function (audioTrack) {
+                this._player.setSelectTrack("AUDIO", audioTrack);
+            },
+
             suspendPlayer: function () {
                 this._player.suspend();
                 this._suspended = true;
