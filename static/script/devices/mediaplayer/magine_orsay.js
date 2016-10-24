@@ -24,6 +24,7 @@ define(
                 this._currentTimeKnown = false;
                 this._drmConfigured = false;
                 this._player = null;
+                this._jumpCondition = JUMP.NONE;
             },
 
             getPlayer: function() {
@@ -36,6 +37,7 @@ define(
 
             onAVPlayObtained: function (avPlayObject) {
                 this._player = avPlayObject;
+                var self = this;
 
                 var bufferingCB = {
                     onbufferingstart : this._onbufferingstart,
@@ -44,7 +46,7 @@ define(
                 };
 
                 var playCB = {
-                    oncurrentplaytime: this._oncurrentplaytime,
+                    oncurrentplaytime: function(time){self['_oncurrentplaytime'].apply(self, [time])},
                     onresolutionchanged: this._onresolutionchanged,
                     onstreamcompleted: this._onstreamcompleted,
                     onerror: this._toErrorfunction
@@ -130,7 +132,6 @@ define(
                 this._postBufferingState = MediaPlayer.STATE.PLAYING;
                 switch (this.getState()) {
                     case MediaPlayer.STATE.STOPPED:
-                        // this._setDisplayFullScreenForVideo();
                         this._play();
                         this._toPlaying();
                         break;
@@ -148,7 +149,10 @@ define(
                 this._postBufferingState = MediaPlayer.STATE.PLAYING;
                 switch (this.getState()) {
                     case MediaPlayer.STATE.STOPPED:
+                        alert('Calling beginPlaybackFrom');
                         this._play();
+                        this._jumpCondition = JUMP.FORWARD;
+                        this._jumpTime = seconds;
                         break;
 
                     default:
@@ -193,6 +197,7 @@ define(
                     case MediaPlayer.STATE.COMPLETE:
                         this._stopPlayer();
                         this._toStopped();
+                        this._toEmpty();
                         break;
 
                     default:
@@ -238,8 +243,9 @@ define(
              * @inheritDoc
              */
             getCurrentTime: function () {
-                alert("getCurrentTime FUNCTION!!!!!! ");
-                return this._currentTime;
+                var timestring = JSON.stringify(this._currentTime);
+                var result = JSON.parse(timestring);
+                return parseInt(result.millisecond / 1000);
             },
 
             /**
@@ -315,7 +321,6 @@ define(
                     this.getPlayer();
                 }
                 this._open(this._source, this._drmOpt);
-                // this._sendMessage(Command.SETLISTENERS);
                 var dimensions = RuntimeContext.getDevice().getScreenSize();
 
                 var params = [ 0, 0, dimensions.width, dimensions.height ];
@@ -411,7 +416,6 @@ define(
             },
 
             _play: function(){
-                alert('play');
                 this._player.show();
                 this._player.play(function (playSuccessCB) { alert(" playing the video is successfully."); },
                                   function (error) { alert(" Play error = " + error.message); }
@@ -426,7 +430,6 @@ define(
                     alert('open source = '+ source + ' this._player = ' + this._player);
                     this._player.open(source);
                 }
-                // this._player.open(source, drmParams);
             },
 
             _set_drm: function(params) {
@@ -454,9 +457,12 @@ define(
                 this._player.setDisplayRect(rect);
             },
 
-            _seek_to: function(seconds) {
-                alert('seek_to');
-                this._player.seekTo(seconds * 1000);
+            _jumpForward: function (seconds) {
+                this._player.jumpForward(seconds);
+            },
+
+            _jumpBackward: function (seconds) {
+                this._player.jumpBackward(seconds);
             },
 
             _onbufferingstart: function () {
@@ -475,7 +481,16 @@ define(
 
             _oncurrentplaytime: function (time) {
                 this._currentTime = time;
-                alert ('Playing time : ' + this._currentTime);
+
+                if (this._jumpCondition === JUMP.FORWARD) {
+                    this._jumpForward(this._jumpTime);
+                    this._jumpCondition = JUMP.NONE;
+                    this._jumpTime = 0;
+                } else if (this._jumpCondition === JUMP.BACKWARD) {
+                    this._jumpBackward(this._jumpTime);
+                    this._jumpCondition = JUMP.NONE;
+                    this._jumpTime = 0;
+                }
             },
 
             _onresolutionchanged: function (width, height) {
@@ -501,6 +516,12 @@ define(
             CUSTOM_DATA: 3,
             ADD_LICENSE: 4,
             DEL_LICENSE: 6
+        };
+
+        var JUMP = {
+            NONE: 'none',
+            FORWARD: 'forward',
+            BACKWARD: 'backward'
         };
 
       var instance = null;
