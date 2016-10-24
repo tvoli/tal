@@ -14,7 +14,7 @@ define(
                 console.log("init player");
                 this._super();
                 this._state = MediaPlayer.STATE.EMPTY;
-                this._playerPlugin = document.getElementById('playerPlugin');
+                this._playerPlugin = document.getElementById('player-element');
                 this._deferSeekingTo = null;
                 this._postBufferingState = null;
                 this._tryingToPause = false;
