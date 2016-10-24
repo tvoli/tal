@@ -11,6 +11,7 @@ define(
         var Player = MediaPlayer.extend({
 
             init: function() {
+                console.log("init player");
                 this._super();
                 this._state = MediaPlayer.STATE.EMPTY;
                 this._playerPlugin = document.getElementById('playerPlugin');
@@ -288,13 +289,9 @@ define(
                     var data = JSON.stringify(custom_data);
                     drmParam.CustomData = btoa(data);
                 }
-                try {
-                    this._player.setDrm("PLAYREADY", "SetProperties", JSON.stringify(this._drmParam));
-                    this._drmConfigured = true;
-                    this._player.prepare();
-                } catch (e) {
-                    console.log("Problem setting DRM params ", e.name)
-                }
+                this._player.setDrm("PLAYREADY", "SetProperties", JSON.stringify(this._drmParam));
+                this._drmConfigured = true;
+                this._player.prepare();
             },
 
             getSubtitleTracks: function() {
@@ -329,10 +326,16 @@ define(
                 this._player.open(this._source);
                 this._player.setListener(this._createListener());
 
-                this._player.setDisplayRect(
-                    this._playerPlugin.offsetLeft, this._playerPlugin.offsetTop,
-                    this._playerPlugin.offsetWidth, this._playerPlugin.offsetHeight
-                );
+                if (this._playerPlugin !== null && this._playerPlugin !== undefined) {
+                    this._player.setDisplayRect(
+                        this._playerPlugin.offsetLeft, this._playerPlugin.offsetTop,
+                        this._playerPlugin.offsetWidth, this._playerPlugin.offsetHeight
+                    );
+                } else {
+                    var dimensions = RuntimeContext.getDevice().getScreenSize();
+                    this._player.setDisplayRect(0, 0, dimensions.width, dimensions.height );
+                }
+
                 this._player.setDisplayMethod('PLAYER_DISPLAY_MODE_FULL_SCREEN');
                 this._toStopped();
             },
@@ -543,12 +546,16 @@ define(
             SUBTITLE: "TEXT"
         }
 
-        var instance = new Player();
+        var instance = null;
 
-        // Mixin this MediaPlayer implementation, so that device.getMediaPlayer() returns the correct implementation for the device
-        Device.prototype.getMediaPlayer = function() {
-            return instance;
-        };
+       // Mixin this MediaPlayer implementation, so that device.getMediaPlayer() returns the correct implementation for the device
+       Device.prototype.getMediaPlayer = function() {
+           if (!instance) {
+               instance = new Player();
+           }
+
+           return instance;
+       };
 
         return Player;
     }
