@@ -397,8 +397,8 @@ define(
                     if (this._postBufferingState === MediaPlayer.STATE.PAUSED) {
                         this._tryPauseWithStateTransition();
                     } else {
-                        this._player.play();
                         this._toPlaying();
+                        this._player.play();
                     }
                 }
             },
@@ -423,6 +423,7 @@ define(
             },
 
             _tryPauseWithStateTransition: function() {
+                console.log("_deferredSeek");
                 this._player.pause();
                 this._toPaused();
                 this._tryingToPause = false;
@@ -450,6 +451,7 @@ define(
             },
 
             _deferredSeek: function() {
+                console.log("_deferredSeek");
                 var clampedTime = this._getClampedTimeForPlayFrom(this._deferSeekingTo);
                 var isNearCurrentTime = this._isNearToCurrentTime(clampedTime);
 
@@ -502,37 +504,44 @@ define(
             },
 
             _toStopped: function () {
+                console.log("_toStopped");
                 this._currentTime = 0;
                 this._state = MediaPlayer.STATE.STOPPED;
                 this._emitEvent(MediaPlayer.EVENT.STOPPED);
             },
 
             _toBuffering: function () {
+                console.log("_toBuffering");
                 this._state = MediaPlayer.STATE.BUFFERING;
                 this._emitEvent(MediaPlayer.EVENT.BUFFERING);
             },
 
             _toPlaying: function () {
+                console.log("_toPlaying");
                 this._state = MediaPlayer.STATE.PLAYING;
                 this._emitEvent(MediaPlayer.EVENT.PLAYING);
             },
 
             _toPaused: function () {
+                console.log("_toPaused");
                 this._state = MediaPlayer.STATE.PAUSED;
                 this._emitEvent(MediaPlayer.EVENT.PAUSED);
             },
 
             _toComplete: function () {
+                console.log("_toComplete");
                 this._state = MediaPlayer.STATE.COMPLETE;
                 this._emitEvent(MediaPlayer.EVENT.COMPLETE);
             },
 
             _toEmpty: function () {
+                console.log("_toEmpty");
                 this._wipe();
                 this._state = MediaPlayer.STATE.EMPTY;
             },
 
             _toError: function(errorMessage) {
+                console.log("_toError " + errorMessage);
                 this._wipe();
                 this._state = MediaPlayer.STATE.ERROR;
                 this._reportError(errorMessage);
