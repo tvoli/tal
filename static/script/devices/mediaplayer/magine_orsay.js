@@ -37,7 +37,22 @@ define(
 
             onAVPlayObtained: function (avPlayObject) {
                 this._player = avPlayObject;
-                this._player.init();
+
+                var bufferingCB = {
+                    onbufferingstart : this._onbufferingstart,
+                    onbufferingprogress: this._onbufferingprogress,
+                    onbufferingcomplete: this._onbufferingcomplete
+                };
+
+                var playCB = {
+                    oncurrentplaytime: this._oncurrentplaytime,
+                    onresolutionchanged: this._onresolutionchanged,
+                    onstreamcompleted: this._onstreamcompleted,
+                    onerror: this._toErrorfunction
+                };
+
+                this._player.init({ bufferingCallback : bufferingCB,
+                                    playCallback : playCB });
             },
 
             onAVPlayError: function (error) {
@@ -166,7 +181,7 @@ define(
 
                 switch (this.getState()) {
                     case MediaPlayer.STATE.STOPPED:
-                        this._setDisplayFullScreenForVideo();
+                        // this._setDisplayFullScreenForVideo();
                         this._seekToPosition(seekingTo);
                         this._play();
                         break;
@@ -259,7 +274,7 @@ define(
              */
             getCurrentTime: function () {
                 alert("getCurrentTime FUNCTION!!!!!! ");
-                return 0;
+                return this._currentTime;
             },
 
             /**
@@ -351,76 +366,6 @@ define(
                 this._toStopped();
             },
 
-            _createListener: function() {
-                self = this;
-                if (!this._listener) {
-                    this._listener = {
-                        onbufferingstart: function() {
-                            self._onDeviceBuffering();
-                        },
-                        onbufferingprogress: function(percent) {
-                            console.log("Buffering progress. " + percent);
-                        },
-                        onevent: function(eventType, eventData) {
-                            console.log("event: " + eventType + ", data: " + eventData);
-                        },
-                        onerror: function(eventType) {
-                            self._onDeviceError("event type error : " + eventType);
-                        },
-                        onbufferingcomplete: function() {
-                            console.log("onbufferingcomplete");
-                            self._onFinishedBuffering();
-                        },
-                        onstreamcompleted: function() {
-                            console.log("onstreamcompleted");
-                            self._onEndOfMedia();
-                        },
-                        oncurrentplaytime: function(currentTime) {
-                            console.log("Current Playtime : " + currentTime);
-                            self._onCurrentTime(currentTime);
-                        },
-                        ondrmevent: function(drmEvent, drmData) {
-                            console.log("DRM callback: " + drmEvent + ", data: " + drmData);
-                        },
-                        onsubtitlechange: function(duration, text, type, attriCount, attributes) {
-                            console.log("subtitle changed");
-                    	    document.getElementById("subtitleArea").innerHTML = text;
-                    	}
-                    };
-                }
-
-                return this._listener;
-            },
-
-            _onFinishedBuffering: function() {
-                if (this.getState() !== MediaPlayer.STATE.BUFFERING) {
-                    return;
-                }
-
-                if (this._deferSeekingTo === null) {
-                    if (this._postBufferingState === MediaPlayer.STATE.PAUSED) {
-                        this._tryPauseWithStateTransition();
-                    } else {
-                        this._play();
-                        this._toPlaying();
-                    }
-                }
-            },
-
-            _onDeviceError: function(message) {
-                this._reportError(message);
-            },
-
-            _onDeviceBuffering: function() {
-                if (this.getState() === MediaPlayer.STATE.PLAYING) {
-                    this._toBuffering();
-                }
-            },
-
-            _onEndOfMedia: function() {
-                this._toComplete();
-            },
-
             _stopPlayer: function() {
                 this._stop();
                 this._currentTimeKnown = false;
@@ -436,33 +381,6 @@ define(
                 var state = this.getState();
                 if (state === MediaPlayer.STATE.PLAYING) {
                     this._emitEvent(MediaPlayer.EVENT.STATUS);
-                }
-            },
-
-            _onCurrentTime: function(timeInMillis) {
-                this._currentTime = timeInMillis / 1000;
-                this._onStatus();
-                this._currentTimeKnown = true;
-
-                if (this._deferSeekingTo !== null) {
-                    this._deferredSeek();
-                }
-
-                if (this._tryingToPause) {
-                    this._tryPauseWithStateTransition();
-                }
-            },
-
-            _deferredSeek: function() {
-                var clampedTime = this._getClampedTimeForPlayFrom(this._deferSeekingTo);
-                var isNearCurrentTime = this._isNearToCurrentTime(clampedTime);
-
-                if (isNearCurrentTime) {
-                    this._toPlaying();
-                    this._deferSeekingTo = null;
-                } else {
-                    this._seekToPosition(clampedTime);
-                    this._deferSeekingTo = null;
                 }
             },
 
@@ -486,7 +404,11 @@ define(
             },
 
             _seekToPosition: function(seconds) {
-                this._seek_to(seconds * 1000);
+              try {
+                  this._seek_to(seconds * 1000);
+                }catch (e) {
+                  alert('ERROR ON SEEK = ' + e.message);
+                }
             },
 
             _reportError: function(errorMessage) {
@@ -588,6 +510,36 @@ define(
                 this._player.seekTo(seconds * 1000);
             },
 
+            _onbufferingstart: function () {
+                alert('buffering started');
+                this._toBuffering();
+            },
+
+            _onbufferingprogress: function (percent) {
+                this._bufferingprogress = percent;
+                alert ('on buffering : ' + this._bufferingprogress);
+            },
+
+            _onbufferingcomplete: function () {
+                alert ('buffering completely');
+            },
+
+            _oncurrentplaytime: function (time) {
+                this._currentTime = time;
+                alert ('Playing time : ' + this._currentTime);
+            },
+
+            _onresolutionchanged: function (width, height) {
+                this._width = width;
+                this._height = height;
+                alert ('Resolution changed : ' + this._width + ', ' + this._height);
+            },
+
+            _onstreamcompleted: function () {
+                alert ('streaming completed');
+                this._toComplete();
+            },
+
             /**
              * @constant {Number} Time (in seconds) compared to current time within which seeking has no effect.
              * On a sample device (Samsung FoxP 2013), seeking by two seconds worked 90% of the time, but seeking
@@ -602,28 +554,16 @@ define(
             DEL_LICENSE: 6
         };
 
-        var bufferingCB = {
-            onbufferingstart : function() { alert('buffering started'); },
-            onbufferingprogress: function(percent) { alert ('on buffering : ' + percent); },
-            onbufferingcomplete:function() { alert ('buffering completely'); }
-        };
+      var instance = null;
 
-        var playCB = {
-            oncurrentplaytime: function(time) { alert ('playing time : ' + time); },
-            onresolutionchanged: function(width, height) { alert ('resolution changed : ' + width + ", " + height); },
-            onstreamcompleted: function() { alert ('streaming completed'); },
-            onerror: function (error) { alert (error.name); }
-        };
+      // Mixin this MediaPlayer implementation, so that device.getMediaPlayer() returns the correct implementation for the device
+      Device.prototype.getMediaPlayer = function() {
+          if (!instance) {
+              instance = new Player();
+          }
 
-        var instance = new Player();
-
-        // Mixin this MediaPlayer implementation, so that device.getMediaPlayer() returns the correct implementation for the device
-        Device.prototype.getMediaPlayer = function() {
-            alert('######### MAGINE ORSAY getMediaPlayer ###########');
-            return instance;
-        };
-
-        return Player;
+          return instance;
+      };
     }
 
 );
