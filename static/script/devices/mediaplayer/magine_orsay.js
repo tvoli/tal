@@ -19,7 +19,6 @@ define(
                 this._super();
                 this._state = MediaPlayer.STATE.EMPTY;
                 this._playerPlugin = document.getElementById('playerPlugin');
-                this._postBufferingState = null;
                 this._tryingToPause = false;
                 this._currentTimeKnown = false;
                 this._drmConfigured = false;
@@ -79,7 +78,6 @@ define(
              * @inheritDoc
              */
             resume : function () {
-                this._postBufferingState = MediaPlayer.STATE.PLAYING;
                 switch (this.getState()) {
                 case MediaPlayer.STATE.PLAYING:
                     break;
@@ -107,16 +105,12 @@ define(
              * @inheritDoc
              */
             playFrom: function (seconds) {
-                this._postBufferingState = MediaPlayer.STATE.PLAYING;
-
                 switch (this.getState()) {
                 case MediaPlayer.STATE.BUFFERING:
                 case MediaPlayer.STATE.PLAYING:
                 case MediaPlayer.STATE.PAUSED:
                 case MediaPlayer.STATE.COMPLETE:
-                    this._stop();
-                    this._play();
-                    this._toPlaying();
+                    this._checkPlayPosition(seconds);
                     break;
 
                 default:
@@ -129,7 +123,6 @@ define(
              * @inheritDoc
              */
             beginPlayback: function() {
-                this._postBufferingState = MediaPlayer.STATE.PLAYING;
                 switch (this.getState()) {
                     case MediaPlayer.STATE.STOPPED:
                         this._play();
@@ -146,11 +139,10 @@ define(
              * @inheritDoc
              */
             beginPlaybackFrom: function(seconds) {
-                this._postBufferingState = MediaPlayer.STATE.PLAYING;
                 switch (this.getState()) {
                     case MediaPlayer.STATE.STOPPED:
-                        alert('Calling beginPlaybackFrom');
                         this._play();
+                        this._toPlaying();
                         this._jumpCondition = JUMP.FORWARD;
                         this._jumpTime = seconds;
                         break;
@@ -165,7 +157,6 @@ define(
              * @inheritDoc
              */
             pause: function () {
-                this._postBufferingState = MediaPlayer.STATE.PAUSED;
                 switch (this.getState()) {
                     case MediaPlayer.STATE.BUFFERING:
                     case MediaPlayer.STATE.PAUSED:
@@ -245,7 +236,8 @@ define(
             getCurrentTime: function () {
                 var timestring = JSON.stringify(this._currentTime);
                 var result = JSON.parse(timestring);
-                return parseInt(result.millisecond / 1000);
+                var value = parseInt(result.millisecond / 1000);
+                return value;
             },
 
             /**
@@ -330,6 +322,7 @@ define(
             },
 
             _stopPlayer: function() {
+                alert('stop player');
                 this._stop();
                 this._currentTimeKnown = false;
             },
@@ -353,6 +346,7 @@ define(
             },
 
             _wipe: function () {
+                alert('wipe');
                 this._stopPlayer();
                 this._type = undefined;
                 this._source = undefined;
@@ -397,15 +391,16 @@ define(
             },
 
             _toEmpty: function () {
+                alert('_toEmpty');
                 this._wipe();
                 this._state = MediaPlayer.STATE.EMPTY;
             },
 
             _toError: function(errorMessage) {
+                alert(">>>>>>>>>>> _toError: " + errorMessage);
                 this._wipe();
                 this._state = MediaPlayer.STATE.ERROR;
                 this._reportError(errorMessage);
-                alert(">>>>>>>>>>> _toError: " + errorMessage);
                 throw 'ApiError: ' + errorMessage;
             },
 
@@ -438,7 +433,7 @@ define(
             },
 
             _stop: function() {
-                alert('stop');
+                alert('#####stop');
                 this._player.stop();
             },
 
@@ -462,7 +457,17 @@ define(
             },
 
             _jumpBackward: function (seconds) {
-                this._player.jumpBackward(seconds);
+                var value = this.getCurrentTime() - seconds;
+                this._player.jumpBackward(value);
+            },
+
+            _checkPlayPosition: function (seconds) {
+                if (this.getCurrentTime() > seconds) {
+                    this._jumpCondition = JUMP.BACKWARD;
+                } else {
+                    this._jumpCondition = JUMP.FORWARD;
+                }
+                this._jumpTime = seconds;
             },
 
             _onbufferingstart: function () {
@@ -502,6 +507,11 @@ define(
             _onstreamcompleted: function () {
                 alert ('streaming completed');
                 this._toComplete();
+            },
+
+            _toErrorfunction: function (error) {
+                alert ('_toErrorfunction: ' + error.message);
+                this._toError(error.message);
             },
 
             /**
