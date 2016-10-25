@@ -275,15 +275,6 @@ define(
             setDRMParams: function(license_url, custom_data) {
 
                 alert("setDRMParams license_url= "+ license_url + "custom_data= " + custom_data );
-                this._drmOpt = {
-                    drm : {
-                        type : "Playready",
-                        company : 'Microsoft Corporation',
-                        deviceID : '1'
-                    }
-                };
-
-                this._prepare();
 
                 if (license_url !== '' && license_url !== undefined) {
                   var params = [ drmData.ADD_LICENSE, license_url, license_url.length ];
@@ -333,13 +324,19 @@ define(
                 if (this._player === null) {
                     this.getPlayer();
                 }
+
+                this._drmOpt = {
+                    drm : {
+                        type : "Playready",
+                        company : 'Microsoft Corporation',
+                        deviceID : '1'
+                    }
+                };
+
                 this._open(this._source, this._drmOpt);
-                var dimensions = RuntimeContext.getDevice().getScreenSize();
 
-                var params = [ 0, 0, dimensions.width, dimensions.height ];
-
-                // this._set_display_rect(params);
                 this._toStopped();
+                alert('<<< Magine orsay prepare');
             },
 
             _stopPlayer: function() {
@@ -451,7 +448,7 @@ define(
             },
 
             _set_drm: function(params) {
-                alert('set_drm');
+                alert('set_drm: ' + params);
                 this._player.setPlayerProperty(params[0], params[1], params[2]);
             },
 
