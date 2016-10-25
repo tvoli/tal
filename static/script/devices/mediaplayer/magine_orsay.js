@@ -24,6 +24,9 @@ define(
                 this._drmConfigured = false;
                 this._player = null;
                 this._jumpCondition = JUMP.NONE;
+                this._audioTracks = undefined;
+                this._audioNumChannels = undefined;
+                this._currentAudioTrack = undefined;
             },
 
             getPlayer: function() {
@@ -297,14 +300,32 @@ define(
             },
 
             getSubtitleTracks: function() {
-                // TODO define a format to return
-                var totalTracks = webapis.avplay.getTotalTrackInfo();
-                var currentTracks = webapis.avplay.getCurrentStreamInfo();
+            },
 
-                return {
-                    subtitleTracks: totalTracks,
-                    currentSubtitleTrack: currentTracks
-                };
+            setSubtitleTrack: function (subtitleTrack) {
+            },
+
+            getAudioTracks: function () {
+
+              var audioParams = {
+                  audioTracks: this._audioTracks,
+                  audioNumChannels: this._audioNumChannels,
+                  currentAudioTrack: this._currentAudioTrack
+              };
+
+              return audioParams;
+            },
+
+            setAudioTrack: function (audioTrack) {
+                if (this._audioTracks > 0) {
+                  var track = this._currentAudioTrack + 1;
+                  if(track >= this._audioTracks) {
+                      this._currentAudioTrack = 0;
+                  } else {
+                      this._currentAudioTrack = track;
+                  }
+                  this._player.setAudioStreamID(this._currentAudioTrack);
+                }
             },
 
             _prepare: function() {
@@ -356,6 +377,8 @@ define(
                 this._currentTimeKnown = false;
                 this._drmConfigured = false;
                 this._drmOpt = undefined;
+                this._audioTracks = undefined;
+                this._currentAudioTrack = undefined;
                 this._reset();
             },
 
@@ -495,6 +518,11 @@ define(
                     this._jumpBackward(this._jumpTime);
                     this._jumpCondition = JUMP.NONE;
                     this._jumpTime = 0;
+                }
+                if (this._audioTracks === undefined &&
+                    this._currentAudioTrack === undefined) {
+                      this._audioTracks = this._player.totalNumOfAudio;
+                      this._currentAudioTrack = 0;
                 }
             },
 
