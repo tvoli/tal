@@ -327,7 +327,18 @@ define(
             },
 
             setAudioTrack: function (audioTrack) {
-                this._player.setSelectTrack("AUDIO", audioTrack);
+                var mediaList = this._player.getTotalTrackInfo();
+
+                for (var i = 0; i < mediaList.length; i++) {
+                     if (mediaList[i].type == "AUDIO") {
+                         var extraParam  = JSON.parse(mediaList[i].extra_info);
+                         if (extraParam.language == audioTrack) {
+                             console.log("setting to: " + audioTrack + " index: " + mediaList[i].index);
+                             this._player.setSelectTrack("AUDIO", mediaList[i].index);
+                             break;
+                         }
+                     }
+                }
             },
 
             suspendPlayer: function () {
@@ -500,7 +511,7 @@ define(
 
                 for (var i = 0; i < mediaList.length; i++) {
                      if (mediaList[i].type == "AUDIO") {
-                         var extraParam  = JSON.parse(test[i].extra_info);
+                         var extraParam  = JSON.parse(mediaList[i].extra_info);
                          totalTracksArray.push(extraParam.language);
                      }
                 }
