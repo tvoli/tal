@@ -298,18 +298,32 @@ define(
             },
 
             getSubtitleTracks: function() {
+                var subtitleTracks = this._getSubtitleInfo(this._player.getTotalTrackInfo());
+                var currentSubtitleTrack = this._getSubtitleInfo(this._player.getCurrentStreamInfo());
+
                 return {
-                    subtitleTracks: _getMediaInfo(this._player.getTotalTrackInfo(), MediaTrackType.SUBTITLE),
-                    currentSubtitleTrack: _getMediaInfo(this._player.getCurrentStreamInfo(), MediaTrackType.SUBTITLE)
+                    subtitleTracks: subtitleTracks,
+                    currentSubtitleTrack: currentSubtitleTrack
                 };
             },
 
             setSubtitleTrack: function (subtitleTrack) {
-                this._player.setSelectTrack("TEXT", subtitleTrack);
+                var mediaList = this._player.getTotalTrackInfo();
+
+                for (var i = 0; i < mediaList.length; i++) {
+                     if (mediaList[i].type == "TEXT") {
+                         var extraParam  = JSON.parse(mediaList[i].extra_info);
+                         if (extraParam.track_lang == subtitleTrack) {
+                             console.log("setting to: " + subtitleTrack + " index: " + mediaList[i].index);
+                             this._player.setSelectTrack("TEXT", mediaList[i].index);
+                             break;
+                         }
+                     }
+                }
             },
 
             getAudioTracks: function () {
-                return _getMediaInfo(this._player.getTotalTrackInfo(), MediaTrackType.AUDIO);
+                return this._getAudioInfo(this._player.getTotalTrackInfo());
             },
 
             setAudioTrack: function (audioTrack) {
@@ -379,7 +393,7 @@ define(
                             console.log("DRM callback: " + drmEvent + ", data: " + drmData);
                         },
                         onsubtitlechange: function(duration, text, type, attriCount, attributes) {
-                            console.log("subtitle changed");
+                            console.log("subtitle changed: " + text);
                     	    document.getElementById("subtitleArea").innerHTML = text;
                     	}
                     };
@@ -469,14 +483,27 @@ define(
                 return clampedTime;
             },
 
-            _getMediaInfo: function (mediaList, mediaTrackType) {
+            _getSubtitleInfo: function (mediaList) {
                 var totalTracksArray = [];
 
                 for (var i = 0; i < mediaList.length; i++) {
-                  if (mediaList[i].type == mediaTrackType)
-                      totalTracksArray.push(totalTracks[i].index);
+                     if (mediaList[i].type == "TEXT") {
+                         var extraParam  = JSON.parse(mediaList[i].extra_info);
+                         totalTracksArray.push(extraParam.track_lang);
+                     }
                 }
+                return totalTracksArray;
+            },
 
+            _getAudioInfo: function (mediaList) {
+                var totalTracksArray = [];
+
+                for (var i = 0; i < mediaList.length; i++) {
+                     if (mediaList[i].type == "AUDIO") {
+                         var extraParam  = JSON.parse(test[i].extra_info);
+                         totalTracksArray.push(extraParam.language);
+                     }
+                }
                 return totalTracksArray;
             },
 
