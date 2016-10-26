@@ -29,6 +29,7 @@ define(
              * @inheritDoc
              */
             setSource: function (mediaType, url, mimeType) {
+                console.log("setting source");
                 if (this.getState() === MediaPlayer.STATE.EMPTY) {
                     this._type = mediaType;
                     this._source = url;
@@ -355,7 +356,12 @@ define(
             },
 
             _prepare: function() {
-                this._player.open(this._source);
+                try {
+                    this._player.open(this._source);
+                } catch (e) {
+                    console.log(e);
+                }
+
                 this._player.setListener(this._createListener());
 
                 if (this._playerPlugin !== null && this._playerPlugin !== undefined) {
@@ -367,7 +373,6 @@ define(
                     var dimensions = RuntimeContext.getDevice().getScreenSize();
                     this._player.setDisplayRect(0, 0, dimensions.width, dimensions.height );
                 }
-
                 this._player.setDisplayMethod('PLAYER_DISPLAY_MODE_FULL_SCREEN');
                 this._toStopped();
             },
