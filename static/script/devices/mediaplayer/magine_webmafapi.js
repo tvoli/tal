@@ -1,5 +1,5 @@
 define(
-    'antie/devices/mediaplayer/webmafapi',
+    'antie/devices/mediaplayer/magine_webmafapi',
     [
       "antie/class",
       "antie/runtimecontext"

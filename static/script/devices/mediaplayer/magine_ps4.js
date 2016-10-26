@@ -3,7 +3,7 @@ define(
     [
         'antie/devices/device',
         'antie/devices/mediaplayer/mediaplayer',
-        'antie/devices/mediaplayer/webmafapi',
+        'antie/devices/mediaplayer/magine_webmafapi',
         "antie/runtimecontext"
     ],
     function (Device, MediaPlayer, PS4PlayerAPI, RuntimeContext) {
