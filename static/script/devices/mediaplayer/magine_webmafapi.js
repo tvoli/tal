@@ -13,6 +13,11 @@ define(
         init: function () {
         },
 
+        // logCommand: function (txt) {
+        //   document.getElementById("command-area").innerHTML = txt + '<br/>' +
+        //       document.getElementById("command-area").innerHTML;;
+        // },
+
         getCurrentTime: function () {
           return this.current_time;
         },
@@ -23,9 +28,10 @@ define(
 
         _webmaf_api_entry: function (command,dont_echo_to_debug_tty){
           try {
+            //this.logCommand("--> WebMAF API:" + command);
             window.external.user(command);
           } catch (e) {
-            RuntimeContext.getDevice().getLogger().warn("--> WebMAF API error:" + e);
+            //this.logCommand("--> WebMAF API error:" + e);
           }
           if (typeof dont_echo_to_debug_tty=='undefined'){
             console.log(command);
@@ -57,7 +63,7 @@ define(
           // var play_command='{"command":"load","contentUri":"'+url+'","licenseUri":"'+license+'","customData":"'+custom_data+'","sourceType":'+sourceType+'}';
           var play_command = undefined;
           if (!url) {
-            RuntimeContext.getDevice().getLogger().error("No URL was set.");
+            //this.logCommand("No URL was set.");
           } else {
            play_command = '{"command":"load","contentUri":"'+url+'"';
           }
@@ -65,7 +71,9 @@ define(
             play_command += ',"licenseUri":"'+license+'"';
           }
           if (custom_data) {
-            play_command += ',"customData":"'+custom_data+'"';
+            var data = JSON.stringify(custom_data);
+            var preparedCustomData = btoa(data);
+            play_command += ',"customData":"'+preparedCustomData+'"';
           }
           if (sourceType) {
             play_command += ',"sourceType":'+sourceType+'';
