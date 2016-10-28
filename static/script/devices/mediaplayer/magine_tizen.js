@@ -23,6 +23,7 @@ define(
                 this._suspended = false;
 
                 this._player = webapis.avplay;
+                this._player.stop();
             },
 
             /**
@@ -537,8 +538,9 @@ define(
             },
 
             _seekToPosition: function(seconds) {
-                var self = this;
-                this._player.seekTo(seconds * 1000);
+                // tizen is not seeking to 0
+                var time = seconds < 1 ? 1 : seconds;
+                this._player.seekTo(time * 1000);
             },
 
             _reportError: function(errorMessage) {
