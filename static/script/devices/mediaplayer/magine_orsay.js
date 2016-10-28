@@ -80,7 +80,7 @@ define(
             /**
              * @inheritDoc
              */
-            resume : function () {
+            resume: function () {
                 switch (this.getState()) {
                 case MediaPlayer.STATE.PLAYING:
                     break;
@@ -94,7 +94,7 @@ define(
                     break;
 
                 case MediaPlayer.STATE.PAUSED:
-                    this._play();
+                    this._resume();
                     this._toPlaying();
                     break;
 
@@ -435,6 +435,10 @@ define(
                 this._player.play(function (playSuccessCB) { alert(" playing the video is successfully."); },
                                   function (error) { alert(" Play error = " + error.message); }
                                  );
+            },
+
+            _resume: function () {
+                this._player.resume()
             },
 
             _open: function(source, drmParams) {
