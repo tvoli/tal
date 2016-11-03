@@ -21,7 +21,7 @@ define(
                 this._currentTimeKnown = false;
                 this._drmConfigured = false;
                 this._suspended = false;
-                
+
                 this._player = webapis.avplay;
                 this._player.stop();
             },
@@ -600,7 +600,7 @@ define(
             },
 
             _decodeHTMLEntities: function (str) {
-                return str == "&amp;nbsp;" ? '' : str;
+                return str == "&amp;nbsp;" || str == "&nbsp;" ? '' : str;
             },
 
             CURRENT_TIME_TOLERANCE: 2.5
