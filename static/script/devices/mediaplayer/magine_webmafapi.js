@@ -106,7 +106,40 @@ define(
 
         webmaf_set_set_audio_track: function (left_top_x,left_top_y,right_bottom_x,right_bottom_y) {
           this._webmaf_api_entry('{"command":"setVideoPortalSize","ltx":'+left_top_x+',"lty":'+left_top_y+',"rbx":'+right_bottom_x+', "rby":'+right_bottom_y+'}');
+        },
+
+        webmaf_isPsnConnected: function () {
+          this._webmaf_api_entry('{"command":"isPsnConnected"}');
+        },
+
+        webmaf_isPsnPlusAccount: function () {
+          this._webmaf_api_entry('{"command":"isPsnPlusAccount"}');
+        },
+
+        webmaf_getPsnUserAge: function () {
+          this._webmaf_api_entry('{"command":"getPsnUserAge"}');
+        },
+
+        webmaf_getPsnOnlineId: function () {
+          this._webmaf_api_entry('{"command":"getPsnOnlineId"}');
+        },
+
+        webmaf_getPsnTicket: function () {
+          this._webmaf_api_entry('{"command":"getPsnTicket"}');
+        },
+
+        webmaf_getPsnCommerceProductData: function (id) {
+          this._webmaf_api_entry('{"command":"getPsnCommerceProductData", “id”:”' + id +'"}');
+        },
+
+        webmaf_getPsnEntitlementList: function () {
+          this._webmaf_api_entry('{"command":"getPsnEntitlementList"}');
+        },
+
+        webmaf_setPsnPresenceInfo: function (message) {
+          this._webmaf_api_entry('{"command":"setPsnPresenceInfo", "presenceInfo":"' + message +'"}');
         }
+
       });
     }
 );

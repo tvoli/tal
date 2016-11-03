@@ -73,6 +73,19 @@ define(
                       self._toShowSubtitle(result.textSize, result.text);
                       break;
 
+                  case "psnActivityFeedResponse":
+                      self._topsnActivityFeedResponse(result.maxNumberOfStories,
+                                                      result.psnFeedResponse);
+                      break;
+
+                  case "psnCommerceProductDataResponse":
+                      self._topsnCommerceProductDataResponse();
+                    break;
+
+                  case "getPsnEntitlementList":
+                      self._togetPsnEntitlementList(result.entitlementList);
+                    break;
+
                   case "playerStatusChange":
                       //self.logCommand("playerStatusChange: " + result.playerState);
                       //RuntimeContext.getDevice().getLogger().warn("current state: " + this._state);
@@ -561,6 +574,18 @@ define(
                                   this._license,
                                   this._customData,
                                   this._sourceType);
+            },
+
+            _topsnActivityFeedResponse: function (maxNumberOfStories, psnFeedResponse) {
+
+            },
+
+            _topsnCommerceProductDataResponse: function () {
+
+            },
+
+            _togetPsnEntitlementList: function (entitlementList) {
+
             },
 
             video_API_stop: function() {
