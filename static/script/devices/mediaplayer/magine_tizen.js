@@ -21,7 +21,7 @@ define(
                 this._currentTimeKnown = false;
                 this._drmConfigured = false;
                 this._suspended = false;
-
+                
                 this._player = webapis.avplay;
                 this._player.stop();
             },
@@ -411,7 +411,7 @@ define(
                         },
                         onsubtitlechange: function(duration, text, type, attriCount, attributes) {
                             console.log("subtitle changed: " + text);
-                    	    document.getElementById("subtitleArea").innerHTML = text;
+                    	    document.getElementById("subtitleArea").innerHTML = self._decodeHTMLEntities(text);
                     	}
                     };
                 }
@@ -597,6 +597,10 @@ define(
                 var dimensions = RuntimeContext.getDevice().getScreenSize();
                 this._player.setDisplayRect(0, 0, dimensions.width, dimensions.height);
                 this._player.setDisplayMethod('PLAYER_DISPLAY_MODE_FULL_SCREEN');
+            },
+
+            _decodeHTMLEntities: function (str) {
+                return str == "&amp;nbsp;" ? '' : str;
             },
 
             CURRENT_TIME_TOLERANCE: 2.5
