@@ -27,6 +27,7 @@ define(
                 this._audioTracks = undefined;
                 this._audioNumChannels = undefined;
                 this._currentAudioTrack = undefined;
+                this._mediaDuration = undefined;
             },
 
             getPlayer: function() {
@@ -254,8 +255,8 @@ define(
              * @inheritDoc
              */
             _getMediaDuration: function() {
-                //return this._player.getDuration() / 1000;
-                return 0;
+                // alert("Duration = " + this._mediaDuration);
+                return this._mediaDuration;
             },
 
             /**
@@ -320,7 +321,7 @@ define(
             },
 
             _prepare: function() {
-                alert('>>> Magine orsay prepare');
+                // alert('>>> Magine orsay prepare');
                 if (this._player === null) {
                     this.getPlayer();
                 }
@@ -336,11 +337,11 @@ define(
                 this._open(this._source, this._drmOpt);
 
                 this._toStopped();
-                alert('<<< Magine orsay prepare');
+                // alert('<<< Magine orsay prepare');
             },
 
             _stopPlayer: function() {
-                alert('stop player');
+                // alert('stop player');
                 this._stop();
                 this._currentTimeKnown = false;
             },
@@ -364,12 +365,13 @@ define(
             },
 
             _wipe: function () {
-                alert('wipe');
+                // alert('wipe');
                 this._stopPlayer();
                 this._type = undefined;
                 this._source = undefined;
                 this._mimeType = undefined;
                 this._currentTime = undefined;
+                this._mediaDuration = undefined;
                 this._tryingToPause = false;
                 this._currentTimeKnown = false;
                 this._drmConfigured = false;
@@ -411,13 +413,13 @@ define(
             },
 
             _toEmpty: function () {
-                alert('_toEmpty');
+                // alert('_toEmpty');
                 this._wipe();
                 this._state = MediaPlayer.STATE.EMPTY;
             },
 
             _toError: function(errorMessage) {
-                alert(">>>>>>>>>>> _toError: " + errorMessage);
+                // alert(">>>>>>>>>>> _toError: " + errorMessage);
                 this._wipe();
                 this._state = MediaPlayer.STATE.ERROR;
                 this._reportError(errorMessage);
@@ -432,9 +434,16 @@ define(
 
             _play: function(){
                 this._player.show();
-                this._player.play(function (playSuccessCB) { alert(" playing the video is successfully."); },
-                                  function (error) { alert(" Play error = " + error.message); }
+                this._player.play(this.playSuccessCB.bind(this),
+                                  function (playErrorCB) { alert(" Play error = " + error.message); }
                                  );
+            },
+
+            playSuccessCB: function () {
+                alert(" playing the video is successfully. Duration = " + this._player.duration);
+                if (this._mediaDuration == undefined) {
+                    this._mediaDuration = this._player.duration / 1000;
+                }
             },
 
             _resume: function () {
@@ -443,26 +452,26 @@ define(
 
             _open: function(source, drmParams) {
                 if (drmParams !== null) {
-                    alert('open source = '+ source + ' drmParams = ' + drmParams + 'this._player = ' + this._player);
+                    // alert('open source = '+ source + ' drmParams = ' + drmParams + 'this._player = ' + this._player);
                     this._player.open(source, drmParams);
                 } else {
-                    alert('open source = '+ source + ' this._player = ' + this._player);
+                    // alert('open source = '+ source + ' this._player = ' + this._player);
                     this._player.open(source);
                 }
             },
 
             _set_drm: function(params) {
-                alert('set_drm: ' + params);
+                // alert('set_drm: ' + params);
                 this._player.setPlayerProperty(params[0], params[1], params[2]);
             },
 
             _stop: function() {
-                alert('#####stop');
+                // alert('#####stop');
                 this._player.stop();
             },
 
             _pause: function() {
-                alert('pause');
+                // alert('pause');
                 this._player.pause();
             },
 
@@ -472,15 +481,17 @@ define(
             },
 
             _set_display_rect: function(rect) {
-                alert('set_display_rect ' + rect[0] + rect[1] + rect[2] + rect[3]);
+                // alert('set_display_rect ' + rect[0] + rect[1] + rect[2] + rect[3]);
                 this._player.setDisplayRect(rect);
             },
 
             _jumpForward: function (seconds) {
-                this._player.jumpForward(seconds);
+                var value = seconds - this.getCurrentTime();
+                this._player.jumpForward(value);
             },
 
             _jumpBackward: function (seconds) {
+
                 var value = this.getCurrentTime() - seconds;
                 this._player.jumpBackward(value);
             },
@@ -495,7 +506,7 @@ define(
             },
 
             _onbufferingstart: function () {
-                alert('buffering started');
+                // alert('buffering started');
                 this._toBuffering();
             },
 
@@ -510,6 +521,7 @@ define(
 
             _oncurrentplaytime: function (time) {
                 this._currentTime = time;
+                this._onStatus();
 
                 if (this._jumpCondition === JUMP.FORWARD) {
                     this._jumpForward(this._jumpTime);
