@@ -11,49 +11,24 @@ define(
         var Player = MediaPlayer.extend({
             init: function () {
                 try {
-                this._super();
-                var self = this;
-                this._player = new PS4PlayerAPI();
-                this._state = MediaPlayer.STATE.EMPTY;
-                this._currentTime = undefined;
-                this._timePoll = undefined;
-                this._pollEnabled = false;
-                this._license = undefined;
-                this._customData = undefined;
-                this._sourceType = undefined;
-                this._audioChanged = false;
-                this._audioChangedTime = undefined;
-                this.logBox = undefined;
+                    this._super();
+                    var self = this;
+                    this._player = new PS4PlayerAPI();
+                    this._state = MediaPlayer.STATE.EMPTY;
+                    this._currentTime = undefined;
+                    this._timePoll = undefined;
+                    this._pollEnabled = false;
+                    this._license = undefined;
+                    this._customData = undefined;
+                    this._sourceType = undefined;
+                    this._audioChanged = false;
+                    this._audioChangedTime = undefined;
+                    window.mediaplayer = this;
 
-                window.mediaplayer = this;
-                window.accessfunction = function (json) {
-                    var event = new CustomEvent('playerResponses', {detail:json});
-                    window.dispatchEvent(event);
-                    document.getElementById("debug-area").innerHTML = json + '<br/>' +
-                        document.getElementById("debug-area").innerHTML;
-                }
-                window.addEventListener('playerResponses', this._onPlayerResponse, false);
+                    this._player.addEventCallback(this, this._onPlayerResponse.bind(this));
                 } catch (e) {
                     RuntimeContext.getDevice().getLogger().warn("--> WebMAF API error:" + e);
                 }
-
-                this._player.webmaf_psn_get_id();
-            },
-
-            createlogLox: function () {
-                this.logBox = document.createElement("div");
-                this.logBox.id = "logbox";
-                this.logBox.style.position = "absolute";
-                this.logBox.style.top = "50%";
-                this.logBox.style.left = "0%";
-                this.logBox.style.width = "100%";
-                this.logBox.style.height = "50%";
-                this.logBox.style.color = "#000000";
-                this.logBox.style.backgroundColor = "#d8d8d8";
-                this.logBox.style.backgroundColor = 'rgba(216,216,216,0.8)';
-                this.logBox.style.lineHeight = '12px';
-                this.logBox.style.fontSize = '12px';
-                document.body.appendChild(this.logBox);
             },
 
             logCommand: function (txt) {
@@ -61,7 +36,6 @@ define(
 
             _onPlayerResponse: function (data) {
               var self = window.mediaplayer;
-              //self.logCommand("Response: " + data.detail);
               var result = JSON.parse(data.detail);
               switch(result.command) {
                   case "getAudioTracks":
