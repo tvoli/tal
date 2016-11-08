@@ -167,6 +167,7 @@ define(
                 this._logBox.style.backgroundColor = 'rgba(216,216,216,0.8)';
                 this._logBox.style.lineHeight = '12px';
                 this._logBox.style.fontSize = '12px';
+                this._logBox.style.zIndex = '9999';
                 document.body.appendChild(this._logBox);
             },
 
