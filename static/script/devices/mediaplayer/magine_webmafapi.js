@@ -123,6 +123,14 @@ define(
                 this._webmaf_api_entry('{"command":"isPsnPlusAccount"}');
             },
 
+            webmaf_getPsnUserDOB: function () {
+                this._webmaf_api_entry('{"command":"getPsnUserDOB"}');
+            },
+
+            webmaf_getNpAuthCode: function () {
+                this._webmaf_api_entry('{"command":"getNpAuthCode"}');
+            },
+
             webmaf_getPsnUserAge: function () {
                 this._webmaf_api_entry('{"command":"getPsnUserAge"}');
             },
@@ -183,6 +191,8 @@ define(
             },
 
             _emitEvent: function (data) {
+                var result = JSON.parse(data.detail);
+                this._logCommand("sending event = " + JSON.stringify(result));
                 this._callbackManager.callAll(data);
             }
         });
